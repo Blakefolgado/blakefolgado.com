@@ -79,10 +79,8 @@
         .profile-pic {
             width: 80px;
             height: 80px;
-            border-radius: 50%;
             object-fit: cover;
-            margin-bottom: 1rem;
-            border: none;
+            display: block;
         }
 
         h1 {
@@ -136,6 +134,127 @@
             font-weight: 600;
             border-bottom: none;
             padding-bottom: 0;
+        }
+
+        /* Pronounced Liquid Glass Effect */
+        .glass-container {
+            position: relative;
+            display: inline-block;
+            line-height: 0;
+            overflow: hidden;
+            background: rgba(255, 255, 255, 0.05);
+            /* Base depth shadow */
+            box-shadow:
+                0 4px 6px -1px rgba(0, 0, 0, 0.1),
+                0 2px 4px -1px rgba(0, 0, 0, 0.06),
+                0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Surface Sheen & Rim Light */
+        .glass-container::after {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            /* Broad surface sheen */
+            background: linear-gradient(135deg,
+                    rgba(255, 255, 255, 0.4) 0%,
+                    rgba(255, 255, 255, 0.1) 20%,
+                    rgba(255, 255, 255, 0) 50%,
+                    rgba(255, 255, 255, 0.05) 100%);
+            pointer-events: none;
+            /* Inner rim lighting for 3D edge */
+            box-shadow:
+                inset 0 1px 1px rgba(255, 255, 255, 0.4),
+                inset 1px 0 1px rgba(255, 255, 255, 0.2);
+            z-index: 2;
+            box-sizing: border-box;
+            border: 0.5px solid rgba(255, 255, 255, 0.1);
+        }
+
+        /* Specular Light Source Reflection */
+        .glass-container::before {
+            content: "";
+            position: absolute;
+            top: -10%;
+            left: -10%;
+            width: 50%;
+            height: 50%;
+            background: radial-gradient(circle at center,
+                    rgba(255, 255, 255, 0.6) 0%,
+                    rgba(255, 255, 255, 0) 70%);
+            filter: blur(2px);
+            pointer-events: none;
+            z-index: 3;
+            transform: rotate(-15deg);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .glass-container {
+                background: rgba(255, 255, 255, 0.02);
+                box-shadow:
+                    0 10px 25px -5px rgba(0, 0, 0, 0.6),
+                    0 8px 10px -6px rgba(0, 0, 0, 0.6);
+            }
+
+            .glass-container::after {
+                background: linear-gradient(135deg,
+                        rgba(255, 255, 255, 0.15) 0%,
+                        rgba(255, 255, 255, 0) 40%,
+                        rgba(255, 255, 255, 0.05) 100%);
+                box-shadow:
+                    inset 0 0.5px 0.5px rgba(255, 255, 255, 0.2),
+                    inset 0.5px 0 0.5px rgba(255, 255, 255, 0.1);
+                border: 0.5px solid rgba(255, 255, 255, 0.05);
+            }
+
+            .glass-container::before {
+                opacity: 0.4;
+            }
+        }
+
+        .profile-glass {
+            border-radius: 50%;
+            margin-bottom: 1rem;
+        }
+
+        .profile-glass::after,
+        .profile-glass::before {
+            border-radius: 50%;
+        }
+
+        .app-glass {
+            border-radius: 28%;
+            flex-shrink: 0;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+            /* Slightly deeper icons */
+        }
+
+        .app-glass::after,
+        .app-glass::before {
+            border-radius: 28%;
+        }
+
+        .glass-container:hover {
+            transform: scale(1.04) translateY(-2px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.15), 0 10px 10px -5px rgba(0, 0, 0, 0.1);
+        }
+
+        .glass-container:hover::after {
+            background: linear-gradient(135deg,
+                    rgba(255, 255, 255, 0.5) 0%,
+                    rgba(255, 255, 255, 0.15) 20%,
+                    rgba(255, 255, 255, 0) 50%,
+                    rgba(255, 255, 255, 0.1) 100%);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .glass-container:hover {
+                box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8);
+            }
         }
 
         .project-list {
@@ -221,8 +340,10 @@
 <body>
     <div class="container">
         <header>
-            <img src="https://pbs.twimg.com/profile_images/1965432976679796737/a4clo-mr.jpg" alt="Blake Folgado"
-                class="profile-pic">
+            <div class="glass-container profile-glass">
+                <img src="https://pbs.twimg.com/profile_images/1965432976679796737/a4clo-mr.jpg" alt="Blake Folgado"
+                    class="profile-pic">
+            </div>
             <h1>Blake Folgado</h1>
             <p class="bio">Designer who likes to make products.</p>
             <div class="social-links">
@@ -245,8 +366,10 @@
             <h2>Working on</h2>
             <ul class="project-list">
                 <li class="project-item">
-                    <img src="https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/45/59/f2/4559f29a-b883-8849-6f59-1ce0cb8847dd/Placeholder.mill/400x400bb-75.webp"
-                        alt="Outside" class="app-icon">
+                    <div class="glass-container app-glass">
+                        <img src="https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/45/59/f2/4559f29a-b883-8849-6f59-1ce0cb8847dd/Placeholder.mill/400x400bb-75.webp"
+                            alt="Outside" class="app-icon">
+                    </div>
                     <div class="project-info">
                         <a href="https://apps.apple.com/us/app/id6755601135" class="project-title" target="_blank">
                             Outside
@@ -255,8 +378,10 @@
                     </div>
                 </li>
                 <li class="project-item">
-                    <img src="https://www.google.com/s2/favicons?domain=sentrydock.com&sz=128" alt="Sentrydock"
-                        class="app-icon">
+                    <div class="glass-container app-glass">
+                        <img src="https://www.google.com/s2/favicons?domain=sentrydock.com&sz=128" alt="Sentrydock"
+                            class="app-icon">
+                    </div>
                     <div class="project-info">
                         <a href="https://sentrydock.com" class="project-title" target="_blank">Sentrydock
                         </a>
@@ -264,8 +389,10 @@
                     </div>
                 </li>
                 <li class="project-item">
-                    <img src="https://www.google.com/s2/favicons?domain=famchatapp.com&sz=128" alt="Famchat"
-                        class="app-icon">
+                    <div class="glass-container app-glass">
+                        <img src="https://www.google.com/s2/favicons?domain=famchatapp.com&sz=128" alt="Famchat"
+                            class="app-icon">
+                    </div>
                     <div class="project-info">
                         <a href="https://famchatapp.com" class="project-title" target="_blank">Famchat
                         </a>
@@ -273,8 +400,10 @@
                     </div>
                 </li>
                 <li class="project-item">
-                    <img src="https://magicscreenshots.com/apple-touch-icon.png" alt="Magic Screenshots"
-                        class="app-icon">
+                    <div class="glass-container app-glass">
+                        <img src="https://magicscreenshots.com/apple-touch-icon.png" alt="Magic Screenshots"
+                            class="app-icon">
+                    </div>
                     <div class="project-info">
                         <a href="https://magicscreenshots.com" class="project-title" target="_blank">Magic
                             Screenshots
@@ -384,14 +513,9 @@
     .app-icon {
         width: 54px;
         height: 54px;
-        /* Increased radius for more rounded look */
-        border-radius: 28%;
-        background-color: var(--pill-bg);
         object-fit: cover;
-        flex-shrink: 0;
-        border: 1px solid var(--border);
-        box-shadow: none;
-        /* Ensure no shadow */
+        display: block;
+        border: none;
     }
 
     .previous-list {
