@@ -1,0 +1,10 @@
+{
+  "name": "blakefolgado-com",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "SITE_OUTPUT_DIR=dist node scripts/generate-site.mjs",
+    "generate:site": "node scripts/generate-site.mjs",
+    "generate:mock": "node scripts/generate-site.mjs --mock"
+  }
+}

@@ -1,0 +1,95 @@
+{
+  "site": {
+    "url": "https://blakefolgado.com/",
+    "title": "Blake Folgado",
+    "description": "Designer who likes to make products.",
+    "timezone": "Europe/London",
+    "locationLabel": "London",
+    "weather": {
+      "latitude": 51.5074,
+      "longitude": -0.1278
+    },
+    "images": {
+      "og": "https://blakefolgado.com/og.png",
+      "profile": "https://pbs.twimg.com/profile_images/1965432976679796737/a4clo-mr.jpg"
+    }
+  },
+  "person": {
+    "name": "Blake Folgado",
+    "tagline": "Designer who likes to make products.",
+    "email": "blake@blakefolgado.com",
+    "socials": [
+      {
+        "label": "X",
+        "url": "https://x.com/blakefolgado"
+      },
+      {
+        "label": "Email",
+        "url": "mailto:blake@blakefolgado.com"
+      }
+    ]
+  },
+  "projects": [
+    {
+      "name": "Outside",
+      "subtitle": "Make things happen in real life!",
+      "url": "https://apps.apple.com/us/app/id6755601135",
+      "image": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/45/59/f2/4559f29a-b883-8849-6f59-1ce0cb8847dd/Placeholder.mill/400x400bb-75.webp"
+    },
+    {
+      "name": "Sentrydock",
+      "subtitle": "AI analyst for traders",
+      "url": "https://sentrydock.com",
+      "image": "https://www.google.com/s2/favicons?domain=sentrydock.com&sz=128"
+    },
+    {
+      "name": "Famchat",
+      "subtitle": "Safe AI app for families",
+      "url": "https://famchatapp.com",
+      "image": "https://www.google.com/s2/favicons?domain=famchatapp.com&sz=128"
+    },
+    {
+      "name": "Magic Screenshots",
+      "subtitle": "Instantly beautiful product shots",
+      "url": "https://magicscreenshots.com",
+      "image": "https://magicscreenshots.com/apple-touch-icon.png"
+    }
+  ],
+  "facts": [
+    {
+      "label": "Previous Product Director at Cuvva",
+      "url": "https://www.cuvva.com",
+      "icon": "https://www.google.com/s2/favicons?domain=cuvva.com&sz=128"
+    },
+    {
+      "label": "Cohort 3 at Entrepreneur First",
+      "url": "https://www.joinef.com",
+      "icon": "https://www.google.com/s2/favicons?domain=joinef.com&sz=128"
+    },
+    {
+      "label": "Used to be a toy designer"
+    },
+    {
+      "label": "Angel investor once"
+    },
+    {
+      "label": "Speculator"
+    },
+    {
+      "label": "Love Sci-Fi"
+    },
+    {
+      "label": "Audiobooks over reading"
+    }
+  ],
+  "talks": [
+    {
+      "label": "Scaling design at Cuvva",
+      "url": "https://www.youtube.com/watch?v=6wkWyox00ec"
+    },
+    {
+      "label": "Talk at Figma London",
+      "url": "https://www.youtube.com/watch?v=zj4K_iMKTIY&t=2405s"
+    }
+  ]
+}
