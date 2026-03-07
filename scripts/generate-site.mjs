@@ -112,7 +112,8 @@ async function generatePage({ apiKey, content, dateSeed, numericSeed }) {
           "3. Place these tokens in body_html (they get swapped for real content): {{PROFILE_IMAGE_URL}}, {{NAME}}, {{BIO}}, {{SOCIAL_LINK_ITEMS}}, {{PROJECT_ITEMS}}, {{FACT_ITEMS}}, {{TALK_ITEMS}}, {{DAILY_NOTE}}, {{STATUS_PANELS}}. All must appear.",
           "4. Responsive and readable.",
           "5. primary_font and display_font must be valid Google Fonts.",
-          "6. Don't invent facts — only use what's provided."
+          "6. Don't invent facts — only use what's provided.",
+          "7. Keep body_html concise — under 3000 characters. Use CSS for visual impact rather than verbose HTML."
         ].join(" ")
       },
       {
@@ -124,7 +125,6 @@ async function generatePage({ apiKey, content, dateSeed, numericSeed }) {
       }
     ],
     temperature: 1.8,
-    max_tokens: 8000,
     seed: numericSeed
   };
 
