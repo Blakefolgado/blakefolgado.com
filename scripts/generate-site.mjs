@@ -22,35 +22,7 @@ const DAILY_REFRESH_UTC = {
   minute: 17
 };
 
-const EXPERIENCE_MODES = [
-  "website",
-  "poster",
-  "dashboard",
-  "game",
-  "exhibit",
-  "terminal",
-  "studio"
-];
-
-const INTERACTION_PRESETS = [
-  "spotlight",
-  "drift",
-  "ticker",
-  "scanner",
-  "arcade",
-  "constellation",
-  "pulse"
-];
-
-const MODE_INTERACTIONS = {
-  website: ["spotlight", "drift", "pulse"],
-  poster: ["ticker", "spotlight", "pulse"],
-  dashboard: ["drift", "scanner", "pulse"],
-  game: ["arcade", "scanner", "constellation"],
-  exhibit: ["constellation", "spotlight", "ticker"],
-  terminal: ["scanner", "ticker", "pulse"],
-  studio: ["drift", "spotlight", "constellation"]
-};
+const FALLBACK_MODES = ["website", "poster", "dashboard", "game", "exhibit", "terminal", "studio"];
 
 const FONT_CATALOG = {
   "Archivo Black": "Archivo+Black",
@@ -93,7 +65,47 @@ const CREATIVE_BANK = {
     "night market signage",
     "operating system desktop",
     "trading terminal",
-    "festival poster wall"
+    "festival poster wall",
+    "Windows XP desktop with icons and start bar",
+    "macOS Finder window with sidebar",
+    "8-bit pixel art game screen",
+    "Apple Store product page",
+    "90s GeoCities homepage with visitor counter",
+    "brutalist concrete architecture catalogue",
+    "newspaper front page broadsheet",
+    "vinyl record sleeve inner gatefold",
+    "NASA mission control dashboard",
+    "Japanese train station timetable",
+    "vaporwave mall directory",
+    "Dieter Rams hi-fi product manual",
+    "sci-fi spaceship bridge console",
+    "1970s airline safety card",
+    "skateboard deck graphic",
+    "rave flyer from 1993",
+    "Soviet propaganda poster",
+    "fashion lookbook editorial spread",
+    "Gameboy cartridge manual",
+    "restaurant menu chalkboard",
+    "comic book splash page",
+    "Bloomberg terminal",
+    "AOL Instant Messenger buddy list",
+    "supermarket receipt printout",
+    "construction site warning signage",
+    "luxury watch product photography page",
+    "botanical illustration plate",
+    "90s CD-ROM multimedia encyclopedia",
+    "VHS rental store shelf card",
+    "weather forecast TV broadcast",
+    "karaoke machine song selection screen",
+    "transit map infographic",
+    "Polaroid photo wall collage",
+    "movie credits end scroll",
+    "cassette tape J-card insert",
+    "tarot card spread",
+    "Pokemon card layout",
+    "boarding pass and luggage tag",
+    "old library card catalog",
+    "pinball machine backglass"
   ],
   materials: [
     "frosted acrylic",
@@ -105,7 +117,31 @@ const CREATIVE_BANK = {
     "matte rubber",
     "sun-faded poster ink",
     "laser-cut plastic",
-    "neon wire"
+    "neon wire",
+    "crumpled newspaper",
+    "holographic foil",
+    "worn denim texture",
+    "marble slab",
+    "dot matrix printer paper",
+    "smoked glass",
+    "corrugated cardboard",
+    "brushed titanium",
+    "pixel grid mosaic",
+    "watercolor wash on cotton",
+    "chalkboard dust",
+    "oxidized copper patina",
+    "velvet flocking",
+    "thermal receipt paper",
+    "concrete with rebar exposed",
+    "iridescent soap bubble film",
+    "woodblock print grain",
+    "anodized aluminum rainbow",
+    "cracked LCD panel",
+    "embossed leather",
+    "candy-coat gloss lacquer",
+    "hammered brass sheet",
+    "washi paper fibers",
+    "circuit board trace green"
   ],
   motion: [
     "slow scanner sweeps",
@@ -115,7 +151,14 @@ const CREATIVE_BANK = {
     "score flashes",
     "orbiting dots",
     "gravity-like drift",
-    "soft pulse hits"
+    "soft pulse hits",
+    "glitch flicker on hover",
+    "parallax depth scrolling",
+    "typewriter letter reveal",
+    "VHS tracking distortion",
+    "loading bar that never finishes",
+    "slot machine reel spin",
+    "radar ping sweep"
   ],
   mood: [
     "sharp and playful",
@@ -125,7 +168,23 @@ const CREATIVE_BANK = {
     "calm confidence",
     "optimistic machine age",
     "late-night internet energy",
-    "softly competitive"
+    "softly competitive",
+    "chaotic maximalist joy",
+    "melancholic nostalgia trip",
+    "corporate parody deadpan",
+    "lo-fi bedroom producer chill",
+    "Tokyo convenience store at 3am",
+    "brutally honest minimalism",
+    "playground chaos energy",
+    "underwater pressure and calm",
+    "desert highway loneliness",
+    "first day of school nervous excitement",
+    "luxury unboxing ASMR",
+    "indie zine cut-and-paste rebellion",
+    "solarpunk optimism",
+    "retro-futurism that never happened",
+    "museum after hours quiet power",
+    "street food market sensory overload"
   ],
   accents: [
     "oversized numerals",
@@ -135,7 +194,46 @@ const CREATIVE_BANK = {
     "micro-interaction HUD",
     "split-screen composition",
     "stacked badges",
-    "unexpected whitespace"
+    "unexpected whitespace",
+    "diagonal slashes cutting sections",
+    "circular crop on everything",
+    "monospaced code fragments as decoration",
+    "progress bars as visual rhythm",
+    "speech bubbles for text",
+    "sticky notes as info cards",
+    "barcodes and QR codes as ornament",
+    "hand-drawn arrows and underlines",
+    "overlapping translucent layers",
+    "fake browser chrome UI around content",
+    "receipt-style dotted separators",
+    "stamp and seal marks",
+    "redacted black-bar censorship aesthetic",
+    "emoji as section markers",
+    "price tags on everything",
+    "passport stamp grid",
+    "filing tab dividers"
+  ],
+  eras: [
+    "Y2K millennium bug panic",
+    "1984 Macintosh launch day",
+    "Windows 95 release hype",
+    "MySpace profile customization peak",
+    "Web 2.0 glossy buttons era",
+    "iOS 7 flat design revolution",
+    "Geocities wild west internet",
+    "Flash animation golden age",
+    "Bauhaus 1920s modernism",
+    "Swiss International Style 1960s",
+    "Memphis Group 1980s postmodern",
+    "Art Deco 1930s glamour",
+    "Psychedelic 1960s counterculture",
+    "Cyberpunk neon dystopia",
+    "Cottagecore pastoral fantasy",
+    "Frutiger Aero nature-tech optimism",
+    "Wabi-sabi imperfect beauty",
+    "De Stijl primary color grids",
+    "Pop Art mass culture explosion",
+    "Constructivist geometric propaganda"
   ]
 };
 
@@ -220,8 +318,6 @@ async function main() {
         freeModelCount: freeModels.length,
         freeModelsSample: freeModels.slice(0, 12),
         themeName: normalized.themeName,
-        experienceMode: normalized.experienceMode,
-        interactionPreset: normalized.interactionPreset,
         primaryFont: normalized.primaryFont,
         displayFont: normalized.displayFont,
         dailyLabel: normalized.dailyLabel,
@@ -235,7 +331,7 @@ async function main() {
   );
 
   console.log(
-    `[generator] Wrote ${path.relative(ROOT, outputPath)} (${generationSource}, ${normalized.experienceMode}, ${normalized.interactionPreset})`
+    `[generator] Wrote ${path.relative(ROOT, outputPath)} (${generationSource}, ${normalized.themeName})`
   );
 }
 
@@ -345,7 +441,8 @@ function buildCreativeIngredients(seed) {
     materials: pickUnique(CREATIVE_BANK.materials, rng, 2),
     motion: pickUnique(CREATIVE_BANK.motion, rng, 2),
     mood: pickUnique(CREATIVE_BANK.mood, rng, 2),
-    accents: pickUnique(CREATIVE_BANK.accents, rng, 2)
+    accents: pickUnique(CREATIVE_BANK.accents, rng, 2),
+    era: pickOne(CREATIVE_BANK.eras, rng, "Y2K millennium bug panic")
   };
 }
 
@@ -395,42 +492,31 @@ async function generateStyleSpec({
   ingredients,
   freeModels
 }) {
-  const prompt = [
-    "Create a one-day-only art direction for a personal homepage.",
-    "The site belongs to Blake Folgado, a designer and product builder.",
-    "The facts must stay true, but the presentation can be bold and strange.",
-    "Sometimes the result should feel like a normal website, sometimes a game, poster, terminal, dashboard, or exhibit.",
-    "Avoid generic startup portfolio design."
-  ].join(" ");
-
   const { data } = await callOpenRouterJson({
     apiKey,
     freeModels,
     numericSeed,
-    temperature: 1.2,
-    maxTokens: 1200,
+    temperature: 1.8,
+    maxTokens: 1500,
     messages: [
       {
         role: "system",
         content: [
-          "You are an inventive creative director.",
-          "Return JSON only.",
-          `Allowed experience modes: ${EXPERIENCE_MODES.join(", ")}.`,
-          `Allowed interaction presets: ${INTERACTION_PRESETS.join(", ")}.`,
-          `Allowed fonts: ${Object.keys(FONT_CATALOG).join(", ")}.`,
-          "Do not invent biography facts, companies, talks, or projects."
+          "You are the most unhinged, brilliant creative director alive.",
+          "You design one-day-only homepages for Blake Folgado, a designer and product builder.",
+          "Every single day the page must look COMPLETELY different — not just different colors, but an entirely different visual universe.",
+          "Think: one day it's a Windows XP desktop. Next day it's an 8-bit game. Then an Apple Store product page. Then a 1993 rave flyer. Then a Soviet propaganda poster. Then a luxury fashion editorial. Then a NASA control room. Then a Japanese train timetable. Then a comic book splash page.",
+          "You have ZERO constraints on style, layout, typography, or visual approach.",
+          "The only rule: the content facts must be real (don't invent projects, jobs, or talks).",
+          "Push hard into a specific aesthetic — commit fully to the concept. Never make a generic portfolio.",
+          "Return JSON only."
         ].join(" ")
       },
       {
         role: "user",
         content: JSON.stringify({
           seed: dateSeed,
-          objective: prompt,
-          site: {
-            title: content.site.title,
-            description: content.site.description
-          },
-          content_summary: {
+          person: {
             name: content.person.name,
             tagline: content.person.tagline,
             project_names: content.projects.map((project) => project.name),
@@ -438,18 +524,25 @@ async function generateStyleSpec({
             talk_labels: content.talks.map((talk) => talk.label)
           },
           creative_ingredients: ingredients,
+          instruction: [
+            `Today's design era vibe: "${ingredients.era}".`,
+            `Mash it up with: ${ingredients.mediums.join(" + ")}.`,
+            `Textures: ${ingredients.materials.join(", ")}.`,
+            `Mood: ${ingredients.mood.join(" meets ")}.`,
+            "Go completely wild. The layout, typography, color palette, and overall feel should be radically different from any normal website.",
+            "Pick any Google Fonts you want. Pick any color palette. Invent any layout structure.",
+            "The design should be so distinctive that someone could identify which day it was just from looking at it."
+          ].join(" "),
           response_shape: {
-            theme_name: "short name for the daily concept",
-            experience_mode: "one allowed mode",
-            interaction_preset: "one allowed interaction preset",
-            primary_font: "one allowed font",
-            display_font: "one allowed font",
-            style_prompt: "120-220 words",
-            palette_brief: "1-2 sentences",
-            layout_brief: "1-2 sentences",
-            microcopy_tone: "short phrase",
-            motifs: ["3-6 motifs"],
-            avoid: ["2-5 anti-patterns"]
+            theme_name: "short evocative name for today's concept (2-4 words)",
+            style_prompt: "200-300 word vivid description of the complete visual direction — layout, typography, colors, textures, spacing, mood. Be extremely specific and opinionated.",
+            primary_font: "any Google Font name for body text",
+            display_font: "any Google Font name for headings (must be different from primary)",
+            palette_brief: "describe the exact color feeling — not just 'dark mode' but like 'dusty pink on charcoal with electric lime accents'",
+            layout_brief: "describe the spatial composition — grid structure, spacing philosophy, how sections relate",
+            microcopy_tone: "the voice/personality of UI labels (e.g. 'robotic and terse' or 'excitable carnival barker')",
+            motifs: ["4-8 specific visual motifs that make this design unique"],
+            avoid: ["things that would break the concept"]
           }
         })
       }
@@ -480,78 +573,80 @@ async function generateDesignPackage({
   };
 
   const tokenGuide = {
-    "{{PROFILE_IMAGE_URL}}": "raw image URL string",
-    "{{NAME}}": "plain text name",
-    "{{BIO}}": "plain text bio",
-    "{{SOCIAL_LINK_ITEMS}}": "sequence of anchor tags",
-    "{{PROJECT_ITEMS}}": "sequence of project article cards",
-    "{{FACT_ITEMS}}": "sequence of fact article chips",
-    "{{TALK_ITEMS}}": "sequence of talk anchor cards",
-    "{{DAILY_NOTE}}": "plain text label for the day",
-    "{{STATUS_PANELS}}": "complete responsive status block",
-    "{{INTRO_KICKER}}": "plain text line",
-    "{{PROJECTS_HEADING}}": "plain text heading",
-    "{{FACTS_HEADING}}": "plain text heading",
-    "{{TALKS_HEADING}}": "plain text heading",
-    "{{FOOTER_NOTE}}": "plain text note"
+    "{{PROFILE_IMAGE_URL}}": "raw image URL — use as src attribute value",
+    "{{NAME}}": "plain text — the person's name",
+    "{{BIO}}": "plain text — short tagline",
+    "{{SOCIAL_LINK_ITEMS}}": "pre-built anchor tags — place them inside any container",
+    "{{PROJECT_ITEMS}}": "pre-built project cards — place inside any container element",
+    "{{FACT_ITEMS}}": "pre-built fact items — place inside any container element",
+    "{{TALK_ITEMS}}": "pre-built talk links — place inside any container element",
+    "{{DAILY_NOTE}}": "plain text — label for the day's design edition",
+    "{{STATUS_PANELS}}": "pre-built status block with time and weather — place anywhere"
   };
 
   const { data } = await callOpenRouterJson({
     apiKey,
     freeModels,
     numericSeed: numericSeed ^ 0x85ebca6b,
-    temperature: 1.05,
-    maxTokens: 4500,
+    temperature: 1.5,
+    maxTokens: 8000,
     messages: [
       {
         role: "system",
         content: [
-          "You design a static single-page homepage.",
+          "You are an elite web designer who creates radical, one-of-a-kind single-page designs.",
+          "You have COMPLETE creative freedom over layout, structure, visual style, and CSS.",
           "Return JSON only.",
-          "Do not include script tags, style tags, head tags, body tags, forms, or iframes inside the HTML string.",
-          "The page must be responsive and visually coherent on desktop and mobile.",
-          "Preserve readability even if the concept is game-like or experimental.",
-          "Use the provided content tokens exactly as written.",
-          "Do not invent new projects, jobs, or talks."
+          "Rules for the HTML string:",
+          "- Do NOT include <script>, <style>, <head>, <body>, <form>, or <iframe> tags.",
+          "- DO use the content tokens exactly as provided — they get replaced with real data.",
+          "- Make it responsive — it must look great on both desktop and mobile.",
+          "- Maintain readability — the content should be accessible no matter how wild the design.",
+          "- Do NOT invent new projects, jobs, companies, or talks.",
+          "Rules for the CSS string:",
+          "- Write complete, self-contained CSS for your layout.",
+          "- Use any CSS features you want: grid, flexbox, transforms, filters, animations, gradients, clip-path, mix-blend-mode, etc.",
+          "- Use CSS custom properties (--var-name) referenced from the theme colors.",
+          "- Make it beautiful and distinctive."
         ].join(" ")
       },
       {
         role: "user",
         content: JSON.stringify({
           seed: dateSeed,
-          style_spec: styleSpec,
-          raw_content: contentSummary,
+          creative_direction: styleSpec,
+          content_overview: contentSummary,
           required_tokens: REQUIRED_TEMPLATE_TOKENS,
-          optional_tokens: [
-            "{{INTRO_KICKER}}",
-            "{{PROJECTS_HEADING}}",
-            "{{FACTS_HEADING}}",
-            "{{TALKS_HEADING}}",
-            "{{FOOTER_NOTE}}"
-          ],
           token_guide: tokenGuide,
+          instruction: [
+            "Build the HTML body content and CSS for this design concept.",
+            "The layout should be COMPLETELY unique to this creative direction.",
+            "Don't fall back to a standard card grid — invent a spatial composition that matches the concept.",
+            "The CSS should create the entire visual world: backgrounds, typography, spacing, borders, shadows, animations.",
+            "Use CSS variables --bg, --surface, --text, --muted, --accent, --accent-alt, --border, --accent-soft, --accent-alt-soft, --font-body, --font-display for theme integration.",
+            "Every token must appear in the body_html.",
+            "Write label copy (daily_label, intro_kicker, headings, footer) that matches the concept's voice."
+          ].join(" "),
           response_shape: {
-            experience_mode: styleSpec.experience_mode,
-            interaction_preset: styleSpec.interaction_preset,
-            primary_font: styleSpec.primary_font,
-            display_font: styleSpec.display_font,
-            daily_label: "short line, max 60 chars",
-            intro_kicker: "short line",
-            projects_heading: "short heading",
-            facts_heading: "short heading",
-            talks_heading: "short heading",
-            footer_note: "short note, max 80 chars",
+            primary_font: "Google Font name for body text",
+            display_font: "Google Font name for headings",
+            daily_label: "short line for the day's edition name, max 60 chars",
+            intro_kicker: "short contextual line above the name",
+            projects_heading: "heading for the projects section",
+            facts_heading: "heading for the facts section",
+            talks_heading: "heading for the talks section",
+            footer_note: "short closing note, max 80 chars",
             theme: {
-              background: "#111111",
-              surface: "#1d1d1d",
-              text: "#f4f4f4",
-              muted: "#b3b3b3",
-              accent: "#5af2c6",
-              accent_alt: "#ffb85c",
-              border: "#303030"
+              background: "hex color",
+              surface: "hex color",
+              text: "hex color",
+              muted: "hex color",
+              accent: "hex color",
+              accent_alt: "hex color",
+              border: "hex color"
             },
-            body_html: "HTML string containing all required tokens",
-            css: "A complete CSS string for the generated layout"
+            body_html: "complete HTML string for inside the page-shell div, using all required tokens",
+            css: "complete CSS string for the entire layout and visual design"
           }
         })
       }
@@ -717,8 +812,7 @@ function generateLocalDesign({ content, dateSeed, numericSeed, ingredients }) {
 
 function buildLocalStyleSpec({ dateSeed, numericSeed, ingredients }) {
   const rng = mulberry32(numericSeed ^ 0xa5a5a5a5);
-  const mode = pickOne(EXPERIENCE_MODES, rng, "website");
-  const interaction = pickOne(MODE_INTERACTIONS[mode] ?? INTERACTION_PRESETS, rng, "spotlight");
+  const mode = pickOne(FALLBACK_MODES, rng, "website");
   const [primaryFont, displayFont] = pickUnique(Object.keys(FONT_CATALOG), rng, 2);
   const prefixes = [
     "Signal",
@@ -747,18 +841,18 @@ function buildLocalStyleSpec({ dateSeed, numericSeed, ingredients }) {
 
   return {
     theme_name: `${pickOne(prefixes, rng)} ${pickOne(suffixes, rng)}`,
-    experience_mode: mode,
-    interaction_preset: interaction,
+    fallback_mode: mode,
     primary_font: primaryFont,
     display_font: displayFont,
     style_prompt: [
-      `Build a ${mode} that feels like ${ingredients.mediums.join(" crossed with ")}.`,
+      `Build a page inspired by ${ingredients.mediums.join(" crossed with ")}.`,
+      `Era vibe: ${ingredients.era}.`,
       `Use ${ingredients.materials.join(" and ")} textures with ${ingredients.motion.join(" plus ")}.`,
       `The tone should feel ${ingredients.mood.join(" and ")}.`,
       `Feature ${ingredients.accents.join(" and ")} without becoming cluttered.`
     ].join(" "),
     palette_brief: `Lean into ${ingredients.materials[0]} finishes with a sharp accent and a surprising second accent.`,
-    layout_brief: `Compose the page like a ${mode}, keep clear hierarchy, and let the interaction preset add the twist.`,
+    layout_brief: `Compose the page like a ${ingredients.mediums[0]}, keep clear hierarchy.`,
     microcopy_tone: pickOne(ingredients.mood, rng, "sharp and playful"),
     motifs: [...ingredients.mediums, ...ingredients.materials, ...ingredients.accents].slice(0, 5),
     avoid: ["generic saas hero", "template portfolio grid", "weak contrast"]
@@ -772,24 +866,19 @@ function normalizeStyleSpec(raw, numericSeed, ingredients) {
     ingredients
   });
 
-  const experienceMode = EXPERIENCE_MODES.includes(raw?.experience_mode) ? raw.experience_mode : fallback.experience_mode;
-  const interactionPreset = INTERACTION_PRESETS.includes(raw?.interaction_preset)
-    ? raw.interaction_preset
-    : fallback.interaction_preset;
-  const primaryFont = normalizeFontName(raw?.primary_font) ?? fallback.primary_font;
-  const displayFont = normalizeFontName(raw?.display_font) ?? fallback.display_font;
-  const motifs = sanitizeStringArray(raw?.motifs, 6);
+  const primaryFont = sanitizeInlineText(raw?.primary_font, 80) || fallback.primary_font;
+  const displayFont = sanitizeInlineText(raw?.display_font, 80) || fallback.display_font;
+  const motifs = sanitizeStringArray(raw?.motifs, 8);
   const avoid = sanitizeStringArray(raw?.avoid, 5);
 
   return {
     theme_name: sanitizeInlineText(raw?.theme_name, 80) || fallback.theme_name,
-    experience_mode: experienceMode,
-    interaction_preset: interactionPreset,
+    fallback_mode: fallback.fallback_mode,
     primary_font: primaryFont,
     display_font: displayFont === primaryFont ? fallback.display_font : displayFont,
-    style_prompt: sanitizeParagraph(raw?.style_prompt, 600) || fallback.style_prompt,
-    palette_brief: sanitizeParagraph(raw?.palette_brief, 180) || fallback.palette_brief,
-    layout_brief: sanitizeParagraph(raw?.layout_brief, 180) || fallback.layout_brief,
+    style_prompt: sanitizeParagraph(raw?.style_prompt, 800) || fallback.style_prompt,
+    palette_brief: sanitizeParagraph(raw?.palette_brief, 300) || fallback.palette_brief,
+    layout_brief: sanitizeParagraph(raw?.layout_brief, 300) || fallback.layout_brief,
     microcopy_tone: sanitizeInlineText(raw?.microcopy_tone, 80) || fallback.microcopy_tone,
     motifs: motifs.length ? motifs : fallback.motifs,
     avoid: avoid.length ? avoid : fallback.avoid
@@ -803,14 +892,8 @@ function normalizeDesign({ styleSpec, designPackage, dateSeed, numericSeed }) {
     numericSeed
   });
 
-  const experienceMode = EXPERIENCE_MODES.includes(designPackage?.experience_mode)
-    ? designPackage.experience_mode
-    : styleSpec.experience_mode;
-  const interactionPreset = INTERACTION_PRESETS.includes(designPackage?.interaction_preset)
-    ? designPackage.interaction_preset
-    : styleSpec.interaction_preset;
-  const primaryFont = normalizeFontName(designPackage?.primary_font ?? styleSpec.primary_font) ?? styleSpec.primary_font;
-  const displayFontCandidate = normalizeFontName(designPackage?.display_font ?? styleSpec.display_font) ?? styleSpec.display_font;
+  const primaryFont = resolveGoogleFont(designPackage?.primary_font ?? styleSpec.primary_font) ?? styleSpec.primary_font;
+  const displayFontCandidate = resolveGoogleFont(designPackage?.display_font ?? styleSpec.display_font) ?? styleSpec.display_font;
   const displayFont = displayFontCandidate === primaryFont ? styleSpec.display_font : displayFontCandidate;
   const theme = normalizeTheme(designPackage?.theme, fallback.theme);
   const labels = {
@@ -827,8 +910,6 @@ function normalizeDesign({ styleSpec, designPackage, dateSeed, numericSeed }) {
 
   return {
     themeName: styleSpec.theme_name,
-    experienceMode,
-    interactionPreset,
     primaryFont,
     displayFont,
     stylePrompt: styleSpec.style_prompt,
@@ -853,6 +934,24 @@ function normalizeFontName(value) {
 
   const normalized = value.trim().toLowerCase();
   return Object.keys(FONT_CATALOG).find((font) => font.toLowerCase() === normalized) ?? null;
+}
+
+function resolveGoogleFont(value) {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const exact = normalizeFontName(value);
+  if (exact) {
+    return exact;
+  }
+
+  const cleaned = value.trim();
+  if (cleaned && /^[a-zA-Z0-9 ]+$/.test(cleaned)) {
+    return cleaned;
+  }
+
+  return null;
 }
 
 function sanitizeStringArray(value, limit) {
@@ -1891,7 +1990,6 @@ function renderSite({ content, dateSeed, generationSource, design }) {
     timezone: content.site.timezone,
     locationLabel: content.site.locationLabel,
     weather: content.site.weather,
-    interactionPreset: design.interactionPreset,
     themeName: design.themeName,
     refreshScheduleUtc: DAILY_REFRESH_UTC
   }).replace(/</g, "\\u003c");
@@ -1951,25 +2049,11 @@ function renderSite({ content, dateSeed, generationSource, design }) {
         margin: 0;
         min-height: 100vh;
         color: var(--text);
-        background:
-          radial-gradient(circle at 15% 20%, var(--accent-soft) 0%, transparent 32%),
-          radial-gradient(circle at 88% 78%, var(--accent-alt-soft) 0%, transparent 28%),
-          var(--bg);
+        background: var(--bg);
         font-family: var(--font-body);
         line-height: 1.5;
         overflow-x: hidden;
         position: relative;
-      }
-
-      body::before {
-        content: "";
-        position: fixed;
-        inset: 0;
-        background:
-          radial-gradient(circle 24rem at 15% 20%, var(--accent-soft), transparent 70%),
-          radial-gradient(circle 20rem at 85% 85%, var(--accent-alt-soft), transparent 72%);
-        pointer-events: none;
-        z-index: 0;
       }
 
       img {
@@ -2045,7 +2129,7 @@ function renderSite({ content, dateSeed, generationSource, design }) {
       ${design.generatedCss}
     </style>
   </head>
-  <body data-mode="${design.experienceMode}" data-interaction="${design.interactionPreset}">
+  <body>
     <div class="page-shell">
       ${resolvedBody}
     </div>
@@ -2058,7 +2142,6 @@ function renderSite({ content, dateSeed, generationSource, design }) {
       ${buildClientScript()}
     </script>
     <!-- generated: ${escapeHtml(generationSource)} | ${escapeHtml(dateSeed)} -->
-    <script src="https://book-sparky.com/widget.js" data-slug="blake-folgado-electrical-london"></script>
   </body>
 </html>
 `;
@@ -2164,7 +2247,12 @@ function replaceTokens(template, tokenMap) {
 
 function buildGoogleFontsHref(fonts) {
   const families = [...new Set(fonts)]
-    .map((font) => FONT_CATALOG[font])
+    .map((font) => {
+      if (FONT_CATALOG[font]) {
+        return FONT_CATALOG[font];
+      }
+      return font.replace(/ /g, "+") + ":wght@300;400;500;600;700;800";
+    })
     .filter(Boolean)
     .join("&family=");
   return `https://fonts.googleapis.com/css2?family=${families}&display=swap`;
@@ -2194,8 +2282,6 @@ function buildClientScript() {
       if (!configEl) return;
 
       const config = JSON.parse(configEl.textContent);
-      const root = document.documentElement;
-      const cards = Array.from(document.querySelectorAll("[data-card]"));
 
       function getNextRefreshTime(now) {
         const next = new Date(Date.UTC(
@@ -2219,11 +2305,8 @@ function buildClientScript() {
         const now = new Date();
         const nextRefresh = getNextRefreshTime(now);
         const remainingSeconds = Math.max(0, Math.floor((nextRefresh.getTime() - now.getTime()) / 1000));
-        const countdownText = remainingSeconds.toLocaleString("en-GB") + "s";
-
-        document.querySelectorAll("[data-role='design-countdown']").forEach((node) => {
-          node.innerHTML = "<span>" + countdownText + "</span>";
-        });
+        const el = document.querySelector("[data-role='design-countdown']");
+        if (el) el.textContent = remainingSeconds.toLocaleString("en-GB") + "s";
       }
 
       function updateTime() {
@@ -2234,179 +2317,38 @@ function buildClientScript() {
           hour12: true
         }).format(new Date()).toLowerCase();
 
-        document.querySelectorAll("[data-role='local-time']").forEach((node) => {
+        document.querySelectorAll("[data-role='local-time']").forEach(function(node) {
           node.textContent = time;
         });
       }
 
       async function updateWeather() {
         try {
-          const params = new URLSearchParams({
+          var params = new URLSearchParams({
             latitude: String(config.weather.latitude),
             longitude: String(config.weather.longitude),
             current_weather: "true"
           });
-          const response = await fetch("https://api.open-meteo.com/v1/forecast?" + params.toString());
-          if (!response.ok) {
-            throw new Error(String(response.status));
-          }
-          const payload = await response.json();
-          const temperature = Math.round(payload.current_weather.temperature);
-          const code = payload.current_weather.weathercode;
-          const iconMap = {
-            0: "Clear",
-            1: "Mostly clear",
-            2: "Partly cloudy",
-            3: "Cloudy",
-            45: "Fog",
-            48: "Fog",
-            51: "Drizzle",
-            53: "Drizzle",
-            55: "Drizzle",
-            61: "Rain",
-            63: "Rain",
-            65: "Rain",
-            71: "Snow",
-            73: "Snow",
-            75: "Snow",
-            80: "Showers",
-            81: "Showers",
-            82: "Showers",
-            95: "Storm",
-            96: "Storm",
-            99: "Storm"
+          var response = await fetch("https://api.open-meteo.com/v1/forecast?" + params.toString());
+          if (!response.ok) throw new Error(String(response.status));
+          var payload = await response.json();
+          var temperature = Math.round(payload.current_weather.temperature);
+          var code = payload.current_weather.weathercode;
+          var iconMap = {
+            0: "Clear", 1: "Mostly clear", 2: "Partly cloudy", 3: "Cloudy",
+            45: "Fog", 48: "Fog", 51: "Drizzle", 53: "Drizzle", 55: "Drizzle",
+            61: "Rain", 63: "Rain", 65: "Rain", 71: "Snow", 73: "Snow", 75: "Snow",
+            80: "Showers", 81: "Showers", 82: "Showers", 95: "Storm", 96: "Storm", 99: "Storm"
           };
-          const label = iconMap[code] || "Weather";
-          document.querySelectorAll("[data-role='local-weather']").forEach((node) => {
-            node.textContent = label + " · " + temperature + "C";
+          var label = iconMap[code] || "Weather";
+          document.querySelectorAll("[data-role='local-weather']").forEach(function(node) {
+            node.textContent = label + " \\u00b7 " + temperature + "C";
           });
-        } catch (error) {
-          document.querySelectorAll("[data-role='local-weather']").forEach((node) => {
+        } catch (e) {
+          document.querySelectorAll("[data-role='local-weather']").forEach(function(node) {
             node.textContent = "Unavailable";
           });
         }
-      }
-
-      function setupSpotlight() {
-        window.addEventListener("pointermove", (event) => {
-          root.style.setProperty("--cursor-x", event.clientX + "px");
-          root.style.setProperty("--cursor-y", event.clientY + "px");
-        });
-      }
-
-      function setupDrift() {
-        cards.forEach((card) => {
-          card.addEventListener("pointermove", (event) => {
-            const rect = card.getBoundingClientRect();
-            const x = (event.clientX - rect.left) / rect.width - 0.5;
-            const y = (event.clientY - rect.top) / rect.height - 0.5;
-            card.style.transform = "translateY(-2px) rotateX(" + (-y * 7).toFixed(2) + "deg) rotateY(" + (x * 7).toFixed(2) + "deg)";
-          });
-
-          card.addEventListener("pointerleave", () => {
-            card.style.transform = "";
-          });
-        });
-      }
-
-      function setupPulse() {
-        window.setInterval(() => {
-          const card = cards[Math.floor(Math.random() * cards.length)];
-          if (!card) return;
-          card.classList.add("is-pulsing");
-          window.setTimeout(() => card.classList.remove("is-pulsing"), 700);
-        }, 1600);
-      }
-
-      function setupScanner() {
-        let phase = 0;
-        const loop = () => {
-          phase = (phase + 0.35) % 100;
-          root.style.setProperty("--scan-phase", phase.toFixed(2) + "%");
-          window.requestAnimationFrame(loop);
-        };
-        window.requestAnimationFrame(loop);
-      }
-
-      function setupArcade() {
-        let score = 0;
-        const hitSet = new Set();
-        const hud = document.createElement("div");
-        hud.className = "arcade-hud";
-        hud.innerHTML = '<span>daily score</span><strong>0</strong>';
-        document.body.appendChild(hud);
-        const scoreNode = hud.querySelector("strong");
-
-        cards.forEach((card) => {
-          card.addEventListener("click", () => {
-            const key = card.getAttribute("data-game-target") || Math.random().toString(16).slice(2);
-            if (hitSet.has(key)) return;
-            hitSet.add(key);
-            score += 100;
-            scoreNode.textContent = String(score);
-            card.classList.add("arcade-hit", "is-pulsing");
-            window.setTimeout(() => card.classList.remove("is-pulsing"), 700);
-          });
-        });
-      }
-
-      function setupConstellation() {
-        const canvas = document.createElement("canvas");
-        canvas.className = "constellation-layer";
-        document.body.appendChild(canvas);
-        const context = canvas.getContext("2d");
-        if (!context) return;
-
-        const resize = () => {
-          canvas.width = window.innerWidth * window.devicePixelRatio;
-          canvas.height = window.innerHeight * window.devicePixelRatio;
-          canvas.style.width = window.innerWidth + "px";
-          canvas.style.height = window.innerHeight + "px";
-          context.setTransform(window.devicePixelRatio, 0, 0, window.devicePixelRatio, 0, 0);
-        };
-
-        const draw = () => {
-          context.clearRect(0, 0, window.innerWidth, window.innerHeight);
-          const accent = getComputedStyle(root).getPropertyValue("--accent").trim() || "#ffffff";
-          const points = cards.slice(0, 12).map((card) => {
-            const rect = card.getBoundingClientRect();
-            return {
-              x: rect.left + rect.width / 2,
-              y: rect.top + rect.height / 2
-            };
-          });
-
-          context.strokeStyle = accent + "55";
-          context.lineWidth = 1;
-
-          for (let i = 0; i < points.length; i += 1) {
-            for (let j = i + 1; j < points.length; j += 1) {
-              const dx = points[i].x - points[j].x;
-              const dy = points[i].y - points[j].y;
-              const distance = Math.hypot(dx, dy);
-              if (distance > 280) continue;
-              context.globalAlpha = Math.max(0, 1 - distance / 280) * 0.35;
-              context.beginPath();
-              context.moveTo(points[i].x, points[i].y);
-              context.lineTo(points[j].x, points[j].y);
-              context.stroke();
-            }
-          }
-
-          context.globalAlpha = 1;
-          points.forEach((point) => {
-            context.fillStyle = accent;
-            context.beginPath();
-            context.arc(point.x, point.y, 2.5, 0, Math.PI * 2);
-            context.fill();
-          });
-
-          window.requestAnimationFrame(draw);
-        };
-
-        resize();
-        window.addEventListener("resize", resize);
-        window.requestAnimationFrame(draw);
       }
 
       updateDesignCountdown();
@@ -2415,18 +2357,6 @@ function buildClientScript() {
       window.setInterval(updateDesignCountdown, 1000);
       window.setInterval(updateTime, 1000);
       window.setInterval(updateWeather, 15 * 60 * 1000);
-
-      if (config.interactionPreset === "spotlight") setupSpotlight();
-      if (config.interactionPreset === "drift") setupDrift();
-      if (config.interactionPreset === "pulse") setupPulse();
-      if (config.interactionPreset === "scanner") setupScanner();
-      if (config.interactionPreset === "arcade") setupArcade();
-      if (config.interactionPreset === "constellation") setupConstellation();
-      if (config.interactionPreset === "ticker") {
-        document.querySelectorAll(".panel-label, .section-kicker").forEach((node) => {
-          node.setAttribute("data-theme-name", config.themeName || document.title);
-        });
-      }
     })();
   `;
 }
