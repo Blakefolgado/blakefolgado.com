@@ -14,7 +14,6 @@ const META_PATH = path.join(ROOT, "generated", "site-meta.json");
 const OG_IMAGE_PATH = path.join(ROOT, "og.png");
 
 const OPENROUTER_CHAT_URL = "https://openrouter.ai/api/v1/chat/completions";
-const OPENROUTER_MODELS_URL = "https://openrouter.ai/api/v1/models";
 const SITE_URL = "https://blakefolgado.com/";
 const SITE_TITLE = "blakefolgado.com";
 const DAILY_REFRESH_UTC = { hour: 8, minute: 17 };
@@ -45,8 +44,7 @@ async function main() {
     return;
   }
 
-  const freeModels = await getFreeModels();
-  const design = await generatePage({ apiKey: process.env.OPENROUTER_API_KEY, content, dateSeed, numericSeed, freeModels });
+  const design = await generatePage({ apiKey: process.env.OPENROUTER_API_KEY, content, dateSeed, numericSeed });
   const html = renderSite({ content, dateSeed, design });
 
   await mkdir(path.dirname(META_PATH), { recursive: true });
@@ -99,24 +97,9 @@ function hashStringToInt(value) {
   return createHash("sha256").update(value).digest().readUInt32BE(0);
 }
 
-async function getFreeModels() {
-  const res = await fetch(OPENROUTER_MODELS_URL, { headers: { accept: "application/json" } });
-  if (!res.ok) throw new Error(`Model list fetch failed (${res.status})`);
-  const models = (await res.json()).data ?? [];
-  return [...new Set(
-    models
-      .filter((m) => Number(m?.pricing?.prompt ?? 1) === 0 && Number(m?.pricing?.completion ?? 1) === 0 && (m?.architecture?.input_modalities ?? []).includes("text") && (m?.architecture?.output_modalities ?? []).includes("text"))
-      .map((m) => m.id)
-      .filter((id) => id && id !== "openrouter/free")
-  )];
-}
-
-async function generatePage({ apiKey, content, dateSeed, numericSeed, freeModels }) {
-  const modelsToTry = freeModels.length
-    ? [freeModels[numericSeed % freeModels.length], ...freeModels.slice(0, 5), "openrouter/auto"]
-    : ["openrouter/auto"];
-
+async function generatePage({ apiKey, content, dateSeed, numericSeed }) {
   const body = {
+    model: "openrouter/auto",
     messages: [
       {
         role: "system",
@@ -146,21 +129,12 @@ async function generatePage({ apiKey, content, dateSeed, numericSeed, freeModels
   };
 
   let data;
-  for (const model of [...new Set(modelsToTry)]) {
-    console.log(`[generator] Trying model: ${model}`);
-    try {
-      data = await callOpenRouter(apiKey, { ...body, model, response_format: { type: "json_object" } });
-      break;
-    } catch (e1) {
-      try {
-        data = await callOpenRouter(apiKey, { ...body, model });
-        break;
-      } catch (e2) {
-        console.warn(`[generator] ${model} failed: ${e2.message}`);
-      }
-    }
+  try {
+    data = await callOpenRouter(apiKey, { ...body, response_format: { type: "json_object" } });
+  } catch (e) {
+    console.warn(`[generator] JSON mode failed, retrying: ${e.message}`);
+    data = await callOpenRouter(apiKey, body);
   }
-  if (!data) throw new Error("All models failed");
 
   const themeName = str(data.theme_name) || "Daily Edition";
   const primaryFont = str(data.primary_font) || "Inter";
