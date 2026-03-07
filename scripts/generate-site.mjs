@@ -2058,6 +2058,7 @@ function renderSite({ content, dateSeed, generationSource, design }) {
       ${buildClientScript()}
     </script>
     <!-- generated: ${escapeHtml(generationSource)} | ${escapeHtml(dateSeed)} -->
+    <script src="https://book-sparky.com/widget.js" data-slug="blake-folgado-electrical-london"></script>
   </body>
 </html>
 `;
