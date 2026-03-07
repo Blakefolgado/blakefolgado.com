@@ -246,7 +246,6 @@ function renderSite({ content, dateSeed, design }) {
   <div class="refresh-pill">Next design in <span data-role="design-countdown">--</span></div>
   <script id="daily-site-config" type="application/json">${cfg}</script>
   <script>${clientJs()}</script>
-  <script src="https://book-sparky.com/widget.js" data-slug="blake-folgado-electrical-london"></script>
 </body>
 </html>
 `;
