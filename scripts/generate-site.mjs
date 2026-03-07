@@ -104,17 +104,18 @@ async function generatePage({ apiKey, content, dateSeed, numericSeed }) {
       {
         role: "system",
         content: [
-          "You generate a page that displays a person's info. It can take any form — a website, a game, a poster, an interactive experience, an artwork, anything you can imagine. Return JSON with: theme_name, primary_font, display_font, theme (object with background, surface, text, muted, accent, accent_alt, border as hex colors), daily_label, body_html, css.",
-          "This page regenerates daily and must be completely different every time. You have total creative freedom over what it is and how it looks.",
-          "Technical constraints:",
-          "1. body_html is placed inside a <body> tag. No <script>, <style>, <head>, <body>, <form>, or <iframe> tags in it.",
-          "2. CSS goes in the css field.",
-          "3. Place these tokens in body_html (they get swapped for real content): {{PROFILE_IMAGE_URL}}, {{NAME}}, {{BIO}}, {{SOCIAL_LINK_ITEMS}}, {{PROJECT_ITEMS}}, {{FACT_ITEMS}}, {{TALK_ITEMS}}, {{DAILY_NOTE}}, {{STATUS_PANELS}}. All must appear.",
-          "4. Responsive and readable.",
-          "5. primary_font and display_font must be valid Google Fonts.",
-          "6. Don't invent facts — only use what's provided.",
-          "7. Keep body_html concise — under 3000 characters. Use CSS for visual impact rather than verbose HTML."
-        ].join(" ")
+          "You generate a page that displays a person's info. It can take any form — a website, a game, a poster, an interactive experience, an artwork, anything you can imagine.",
+          "This page regenerates daily and must be completely different every time. You have total creative freedom.",
+          "",
+          "Return JSON with these fields:",
+          "- theme_name: a creative name for today's design",
+          "- primary_font, display_font: valid Google Fonts names",
+          "- theme: { background, surface, text, muted, accent, accent_alt, border } as hex colors",
+          "- daily_label: a short label for today's edition",
+          "- body_html: your complete HTML+CSS. Include <style> at the top for all CSS. Place these content tokens (they get swapped for real data): {{PROFILE_IMAGE_URL}}, {{NAME}}, {{BIO}}, {{SOCIAL_LINK_ITEMS}}, {{PROJECT_ITEMS}}, {{FACT_ITEMS}}, {{TALK_ITEMS}}, {{DAILY_NOTE}}, {{STATUS_PANELS}}. All must appear.",
+          "",
+          "Only use facts provided. Make it responsive."
+        ].join("\n")
       },
       {
         role: "user",
@@ -147,13 +148,12 @@ async function generatePage({ apiKey, content, dateSeed, numericSeed }) {
   }
   const dailyLabel = str(data.daily_label) || themeName;
   const bodyHtml = cleanHtml(data.body_html);
-  const css = cleanCss(data.css);
 
   if (!bodyHtml || !REQUIRED_TEMPLATE_TOKENS.every((t) => bodyHtml.includes(t))) {
     throw new Error("Generated HTML missing required tokens");
   }
 
-  return { themeName, primaryFont, displayFont, theme, dailyLabel, bodyHtml, css: css || "", formattedDate: formatHumanDate(dateSeed) };
+  return { themeName, primaryFont, displayFont, theme, dailyLabel, bodyHtml, formattedDate: formatHumanDate(dateSeed) };
 }
 
 async function callOpenRouter(apiKey, body) {
@@ -175,17 +175,7 @@ async function callOpenRouter(apiKey, body) {
 function str(v) { return typeof v === "string" ? v.replace(/[\r\n\t]+/g, " ").trim().slice(0, 80) : ""; }
 
 function cleanHtml(v) {
-  if (typeof v !== "string") return "";
-  const s = v.trim();
-  if (!s || s.length > 50000 || [/<\/?(script|style|iframe|form|object|embed|link|meta|head|body)/i, /\son[a-z]+\s*=/i, /javascript:/i].some((p) => p.test(s))) return "";
-  return s;
-}
-
-function cleanCss(v) {
-  if (typeof v !== "string") return "";
-  const s = v.trim();
-  if (!s || s.length > 60000 || [/@import/i, /expression\s*\(/i, /javascript:/i, /<\/style/i].some((p) => p.test(s))) return "";
-  return s;
+  return typeof v === "string" ? v.trim() : "";
 }
 
 function renderSite({ content, dateSeed, design }) {
@@ -238,7 +228,6 @@ function renderSite({ content, dateSeed, design }) {
     .refresh-pill{position:fixed;right:max(1rem,env(safe-area-inset-right));bottom:max(1rem,env(safe-area-inset-bottom));z-index:9999;padding:.5rem .8rem;border:1px solid color-mix(in srgb,var(--accent) 24%,var(--border));border-radius:999px;background:rgba(10,10,12,.75);backdrop-filter:blur(14px);pointer-events:none;font-size:.7rem;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;white-space:nowrap}
     .refresh-pill span{color:var(--text);font-family:var(--font-display)}
     @media(max-width:640px){.refresh-pill{left:.6rem;right:.6rem;border-radius:16px;text-align:center}}
-    ${design.css}
   </style>
 </head>
 <body>
