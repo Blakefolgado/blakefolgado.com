@@ -112,11 +112,11 @@ async function getFreeModels() {
 }
 
 async function generatePage({ apiKey, content, dateSeed, numericSeed, freeModels }) {
-  const model = freeModels.length ? freeModels[numericSeed % freeModels.length] : "openrouter/auto";
-  console.log(`[generator] Using model: ${model}`);
+  const modelsToTry = freeModels.length
+    ? [freeModels[numericSeed % freeModels.length], ...freeModels.slice(0, 5), "openrouter/auto"]
+    : ["openrouter/auto"];
 
   const body = {
-    model,
     messages: [
       {
         role: "system",
@@ -146,12 +146,21 @@ async function generatePage({ apiKey, content, dateSeed, numericSeed, freeModels
   };
 
   let data;
-  try {
-    data = await callOpenRouter(apiKey, { ...body, response_format: { type: "json_object" } });
-  } catch (e) {
-    console.warn(`[generator] JSON mode failed, retrying: ${e.message}`);
-    data = await callOpenRouter(apiKey, body);
+  for (const model of [...new Set(modelsToTry)]) {
+    console.log(`[generator] Trying model: ${model}`);
+    try {
+      data = await callOpenRouter(apiKey, { ...body, model, response_format: { type: "json_object" } });
+      break;
+    } catch (e1) {
+      try {
+        data = await callOpenRouter(apiKey, { ...body, model });
+        break;
+      } catch (e2) {
+        console.warn(`[generator] ${model} failed: ${e2.message}`);
+      }
+    }
   }
+  if (!data) throw new Error("All models failed");
 
   const themeName = str(data.theme_name) || "Daily Edition";
   const primaryFont = str(data.primary_font) || "Inter";
