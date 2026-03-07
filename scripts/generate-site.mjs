@@ -112,10 +112,11 @@ async function getFreeModels() {
 }
 
 async function generatePage({ apiKey, content, dateSeed, numericSeed, freeModels }) {
-  if (!freeModels.length) throw new Error("No free models available");
+  const model = freeModels.length ? freeModels[numericSeed % freeModels.length] : "openrouter/auto";
+  console.log(`[generator] Using model: ${model}`);
 
   const body = {
-    model: "openrouter/auto",
+    model,
     messages: [
       {
         role: "system",
@@ -141,8 +142,7 @@ async function generatePage({ apiKey, content, dateSeed, numericSeed, freeModels
     ],
     temperature: 1.8,
     max_tokens: 8000,
-    seed: numericSeed,
-    plugins: [{ id: "auto-router", allowed_models: freeModels.slice(0, 32) }]
+    seed: numericSeed
   };
 
   let data;
