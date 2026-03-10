@@ -108,7 +108,7 @@ function hashStringToInt(value) {
 }
 
 async function generatePage({ apiKey, content, dateSeed, numericSeed }) {
-  const body = {
+  const baseBody = {
     model: "openrouter/auto",
     messages: [
       {
@@ -143,14 +143,56 @@ async function generatePage({ apiKey, content, dateSeed, numericSeed }) {
     seed: numericSeed
   };
 
-  let data;
-  try {
-    data = await callOpenRouter(apiKey, { ...body, response_format: { type: "json_object" } });
-  } catch (e) {
-    console.warn(`[generator] JSON mode failed, retrying: ${e.message}`);
-    data = await callOpenRouter(apiKey, body);
+  let retryNote = "";
+  let lastError = null;
+
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    const requestBody = retryNote
+      ? { ...baseBody, messages: [...baseBody.messages, { role: "user", content: retryNote }] }
+      : baseBody;
+
+    let data;
+    try {
+      data = await callOpenRouter(apiKey, { ...requestBody, response_format: { type: "json_object" } });
+    } catch (e) {
+      console.warn(`[generator] JSON mode failed, retrying: ${e.message}`);
+      data = await callOpenRouter(apiKey, requestBody);
+    }
+
+    try {
+      return normalizeGeneratedDesign({ data, dateSeed });
+    } catch (error) {
+      lastError = error;
+      retryNote = [
+        `Your previous response could not be published because: ${error.message}.`,
+        "Return fresh JSON with a new body_html fragment that obeys the exact token and valid-container rules.",
+        "Do not wrap multi-element tokens in paragraph, list, table, anchor, or button containers."
+      ].join(" ");
+    }
   }
 
+  throw lastError ?? new Error("Failed to generate a publishable page");
+}
+
+async function callOpenRouter(apiKey, body) {
+  const res = await fetch(OPENROUTER_CHAT_URL, {
+    method: "POST",
+    headers: { authorization: `Bearer ${apiKey}`, "content-type": "application/json", "http-referer": SITE_URL, "x-title": SITE_TITLE },
+    body: JSON.stringify(body)
+  });
+  if (!res.ok) throw new Error(`OpenRouter ${res.status}: ${(await res.text()).slice(0, 400)}`);
+  const raw = (await res.json())?.choices?.[0]?.message?.content;
+  const text = typeof raw === "string" ? raw : Array.isArray(raw) ? raw.map((c) => c?.text ?? c ?? "").join("") : JSON.stringify(raw ?? "");
+  const cleaned = text.trim().replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```$/i, "").trim();
+  const start = cleaned.indexOf("{");
+  const end = cleaned.lastIndexOf("}");
+  if (start < 0 || end <= start) throw new Error("No JSON in response");
+  return JSON.parse(cleaned.slice(start, end + 1));
+}
+
+function str(v) { return typeof v === "string" ? v.replace(/[\r\n\t]+/g, " ").trim().slice(0, 80) : ""; }
+
+function normalizeGeneratedDesign({ data, dateSeed }) {
   const themeName = str(data.theme_name) || "Daily Edition";
   const primaryFont = str(data.primary_font) || "Inter";
   const displayFont = str(data.display_font) || "Space Grotesk";
@@ -181,31 +223,13 @@ async function generatePage({ apiKey, content, dateSeed, numericSeed }) {
   };
 }
 
-async function callOpenRouter(apiKey, body) {
-  const res = await fetch(OPENROUTER_CHAT_URL, {
-    method: "POST",
-    headers: { authorization: `Bearer ${apiKey}`, "content-type": "application/json", "http-referer": SITE_URL, "x-title": SITE_TITLE },
-    body: JSON.stringify(body)
-  });
-  if (!res.ok) throw new Error(`OpenRouter ${res.status}: ${(await res.text()).slice(0, 400)}`);
-  const raw = (await res.json())?.choices?.[0]?.message?.content;
-  const text = typeof raw === "string" ? raw : Array.isArray(raw) ? raw.map((c) => c?.text ?? c ?? "").join("") : JSON.stringify(raw ?? "");
-  const cleaned = text.trim().replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```$/i, "").trim();
-  const start = cleaned.indexOf("{");
-  const end = cleaned.lastIndexOf("}");
-  if (start < 0 || end <= start) throw new Error("No JSON in response");
-  return JSON.parse(cleaned.slice(start, end + 1));
-}
-
-function str(v) { return typeof v === "string" ? v.replace(/[\r\n\t]+/g, " ").trim().slice(0, 80) : ""; }
-
 function normalizeHtmlFragment(v) {
   if (typeof v !== "string") return { styles: "", markup: "" };
 
   const html = v.trim();
   if (!html) return { styles: "", markup: "" };
 
-  const styleMatches = [...html.matchAll(/<style\b[^>]*>[\s\S]*?<\/style>/gi)].map((match) => match[0].trim());
+  const styleMatches = [...html.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/gi)].map((match) => match[1].trim()).filter(Boolean);
   const bodyMatch = html.match(/<body\b[^>]*>([\s\S]*?)<\/body>/i);
 
   let content = bodyMatch
@@ -251,6 +275,12 @@ function validateFragmentMarkup(markup) {
   }
 }
 
+function validateRenderedHtml(html) {
+  if (/<style\b[^>]*>[\s\S]*<style\b/i.test(html)) {
+    throw new Error("Rendered HTML contains nested <style> tags");
+  }
+}
+
 function renderSite({ content, dateSeed, design }) {
   const tokenMap = {
     "{{PROFILE_IMAGE_URL}}": esc(content.site.images.profile),
@@ -261,17 +291,23 @@ function renderSite({ content, dateSeed, design }) {
     "{{FACT_ITEMS}}": content.facts.map((f) => { const inner = f.url ? `<a class="content-fact-label" href="${esc(f.url)}" target="_blank" rel="noreferrer">${f.icon ? `<img class="content-mini-icon" src="${esc(f.icon)}" alt="" loading="lazy">` : ""}${esc(f.label)}</a>` : `<div class="content-fact-label">${esc(f.label)}</div>`; return `<article class="content-fact-item">${inner}</article>`; }).join(""),
     "{{TALK_ITEMS}}": content.talks.map((t) => `<a class="content-talk-item" href="${esc(t.url)}" target="_blank" rel="noreferrer"><div class="content-talk-title">${esc(t.label)}</div><div class="content-talk-meta">Watch the talk</div></a>`).join(""),
     "{{DAILY_NOTE}}": esc(`${design.dailyLabel} \u00b7 ${design.formattedDate}`),
+    "{{DAILY_LABEL}}": esc(design.dailyLabel),
+    "{{FORMATTED_DATE}}": esc(design.formattedDate),
+    "{{daily_label}}": esc(design.dailyLabel),
+    "{{formatted_date}}": esc(design.formattedDate),
+    "{{date}}": esc(design.formattedDate),
     "{{STATUS_PANELS}}": `<div class="content-status-strip"><div class="content-status-panel"><div class="content-status-label">${esc(content.site.locationLabel)} time</div><div class="content-status-value" data-role="local-time">--</div></div><div class="content-status-panel"><div class="content-status-label">${esc(content.site.locationLabel)} weather</div><div class="content-status-value" data-role="local-weather">Loading...</div></div></div>`
   };
 
   let body = design.bodyHtml;
   for (const [token, value] of Object.entries(tokenMap)) body = body.split(token).join(value);
+  if (/{{\s*[^}]+\s*}}/.test(body)) throw new Error("Rendered HTML contains unresolved template tokens");
 
   const fonts = [...new Set([design.primaryFont, design.displayFont])].map((f) => f.replace(/ /g, "+") + ":wght@300;400;500;600;700;800").join("&family=");
   const cfg = JSON.stringify({ timezone: content.site.timezone, locationLabel: content.site.locationLabel, weather: content.site.weather, refreshScheduleUtc: DAILY_REFRESH_UTC }).replace(/</g, "\\u003c");
   const layoutCss = design.layoutCss ? `\n    ${design.layoutCss}` : "";
 
-  return `<!DOCTYPE html>
+  const htmlDoc = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -314,6 +350,9 @@ function renderSite({ content, dateSeed, design }) {
 </body>
 </html>
 `;
+
+  validateRenderedHtml(htmlDoc);
+  return htmlDoc;
 }
 
 function esc(v) { return String(v).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;"); }
