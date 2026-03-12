@@ -109,26 +109,53 @@ function hashStringToInt(value) {
 
 async function generatePage({ apiKey, content, dateSeed, numericSeed }) {
   const baseBody = {
-    model: "openrouter/auto",
+    model: "openrouter/free",
     messages: [
       {
         role: "system",
         content: [
-          "You generate a page that displays a person's info. It can take any form — a website, a game, a poster, an interactive experience, an artwork, anything you can imagine.",
-          "This page regenerates daily and must be completely different every time. You have total creative freedom.",
+          "You are an expert web designer. You generate a single-page personal profile site that displays a person's info.",
+          "This page regenerates daily with a unique visual theme each time. Be creative with colors, typography, and layout — but the HTML and CSS must be production-quality and fully functional.",
+          "",
+          "CRITICAL RULES FOR WORKING OUTPUT:",
+          "1. Use only CSS Grid and Flexbox for layout. No floats, no absolute positioning for layout.",
+          "2. Every section must be responsive: use clamp(), min(), max(), minmax(), and percentage-based widths.",
+          "3. All text must have sufficient contrast against its background.",
+          "4. The page must scroll vertically. Never use overflow:hidden on the body or main container.",
+          "5. Use a single <main> wrapper with max-width and margin:0 auto for the overall layout.",
+          "6. Test your CSS mentally — if a property depends on a parent having a specific height/width, ensure that parent sets it.",
           "",
           "Return JSON with these fields:",
-          "- theme_name: a creative name for today's design",
-          "- primary_font, display_font: valid Google Fonts names",
-          "- theme: { background, surface, text, muted, accent, accent_alt, border } as hex colors",
-          "- daily_label: a short label for today's edition",
-          "- body_html: an HTML fragment for inside the existing page <body>. You may include CSS only inside <style> tags. Do not return <!DOCTYPE>, <html>, <head>, <body>, <script>, <link>, <meta>, or <title> tags.",
-          "- The fragment must remain valid HTML when inserted into an existing body. Use generic layout containers like <main>, <section>, <article>, <div>, <nav>, <header>, <footer>, and <aside>.",
-          "- The tokens expand to markup with classes like content-social-link, content-project-card, content-fact-item, content-talk-item, and content-status-panel. Your layout must still work with those rendered elements.",
-          "- {{SOCIAL_LINK_ITEMS}}, {{PROJECT_ITEMS}}, {{FACT_ITEMS}}, {{TALK_ITEMS}}, and {{STATUS_PANELS}} expand to multiple sibling elements. Put them only inside generic containers such as <div>, <section>, or <nav>. Never place them inside <ul>, <ol>, <dl>, <table>, <tr>, <select>, <p>, <a>, or <button>.",
-          "- Place these content tokens (they get swapped for real data): {{PROFILE_IMAGE_URL}}, {{NAME}}, {{BIO}}, {{SOCIAL_LINK_ITEMS}}, {{PROJECT_ITEMS}}, {{FACT_ITEMS}}, {{TALK_ITEMS}}, {{DAILY_NOTE}}, {{STATUS_PANELS}}. All must appear.",
+          "- theme_name: a creative name for today's design (e.g. \"Neon Terminal\", \"Paper Zine\", \"Brutalist Grid\")",
+          "- primary_font: a valid Google Fonts name for body text (e.g. \"Inter\", \"DM Sans\", \"IBM Plex Sans\")",
+          "- display_font: a valid Google Fonts name for headings (e.g. \"Space Grotesk\", \"Syne\", \"Outfit\")",
+          "- theme: { background, surface, text, muted, accent, accent_alt, border } as 6-digit hex colors",
+          "- daily_label: a short tagline for today's edition",
+          "- body_html: an HTML fragment to go inside <body>. Include CSS in a single <style> tag at the top of the fragment. Do NOT return <!DOCTYPE>, <html>, <head>, <body>, <script>, <link>, <meta>, or <title> tags.",
           "",
-          "Only use facts provided. Make it responsive."
+          "STRUCTURE of body_html:",
+          "- Start with one <style> tag containing all CSS",
+          "- Then one <main> element containing all content sections",
+          "- Use <section>, <div>, <nav>, <article>, <header>, <footer>, <aside> as containers",
+          "",
+          "REQUIRED CONTENT TOKENS (all must appear exactly as written):",
+          "- {{PROFILE_IMAGE_URL}} — use as an <img> src attribute",
+          "- {{NAME}} — the person's name, use in an <h1>",
+          "- {{BIO}} — short bio text",
+          "- {{SOCIAL_LINK_ITEMS}} — expands to multiple <a> siblings. Place inside a <div> or <nav>, NEVER inside <ul>, <ol>, <p>, <a>, or <button>",
+          "- {{PROJECT_ITEMS}} — expands to multiple card siblings. Place inside a <div> or <section>, NEVER inside <ul>, <ol>, <table>, <p>, <a>, or <button>",
+          "- {{FACT_ITEMS}} — expands to multiple <article> siblings. Place inside a <div> or <section>, same container rules",
+          "- {{TALK_ITEMS}} — expands to multiple <a> siblings. Place inside a <div> or <section>, same container rules",
+          "- {{DAILY_NOTE}} — a text string with the edition label and date",
+          "- {{STATUS_PANELS}} — expands to status cards. Place inside a <div> or <section>, same container rules",
+          "",
+          "CSS GUIDELINES:",
+          "- Use CSS variables: var(--bg), var(--surface), var(--text), var(--muted), var(--accent), var(--accent-alt), var(--border), var(--font-body), var(--font-display)",
+          "- These are already defined on :root — use them, don't redefine them",
+          "- Add a @media(max-width:768px) block making multi-column layouts single-column",
+          "- Keep class names unique with a short prefix matching the theme (e.g. .neon-hero, .zine-grid)",
+          "",
+          "Only use facts provided. Output valid JSON only."
         ].join("\n")
       },
       {
@@ -139,7 +166,7 @@ async function generatePage({ apiKey, content, dateSeed, numericSeed }) {
         })
       }
     ],
-    temperature: 1.8,
+    temperature: 1.0,
     seed: numericSeed
   };
 
