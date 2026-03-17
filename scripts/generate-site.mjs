@@ -109,7 +109,7 @@ function hashStringToInt(value) {
 
 async function generatePage({ apiKey, content, dateSeed, numericSeed }) {
   const baseBody = {
-    model: "openrouter/free",
+    model: "minimax/minimax-m2.5",
     messages: [
       {
         role: "system",
