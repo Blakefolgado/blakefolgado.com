@@ -109,7 +109,7 @@ function hashStringToInt(value) {
 
 async function generatePage({ apiKey, content, dateSeed, numericSeed }) {
   const baseBody = {
-    model: "minimax/minimax-m2.5",
+    model: "moonshotai/kimi-k2.6",
     messages: [
       {
         role: "system",
@@ -137,7 +137,7 @@ async function generatePage({ apiKey, content, dateSeed, numericSeed }) {
           "",
           "CONTENT TOKENS — these are required placeholders that get replaced with real data. All must appear in body_html:",
           "",
-          "{{PROFILE_IMAGE_URL}} — use as an <img> src. Style the image however you want.",
+          "{{PROFILE_IMAGE_URL}} — use as an <img> src with referrerpolicy=\"no-referrer\". Never use it in CSS url(). Style the image however you want.",
           "{{NAME}} — the person's name",
           "{{BIO}} — a short tagline",
           "{{DAILY_NOTE}} — text string with the edition label and date",
@@ -318,8 +318,8 @@ function renderSite({ content, dateSeed, design }) {
     "{{NAME}}": esc(content.person.name),
     "{{BIO}}": esc(content.person.tagline),
     "{{SOCIAL_LINK_ITEMS}}": content.person.socials.map((s) => `<a class="content-social-link" href="${esc(s.url)}" ${s.url.startsWith("http") ? 'target="_blank" rel="noreferrer"' : ""}>${esc(s.label)}</a>`).join(""),
-    "{{PROJECT_ITEMS}}": content.projects.map((p) => `<a class="content-project-card" href="${esc(p.url)}" target="_blank" rel="noreferrer"><img class="content-project-image" src="${esc(p.image)}" alt="${esc(p.name)}" loading="lazy"><div class="content-project-copy"><div class="content-project-name">${esc(p.name)}</div><div class="content-project-summary">${esc(p.subtitle)}</div></div></a>`).join(""),
-    "{{FACT_ITEMS}}": content.facts.map((f) => { const inner = f.url ? `<a class="content-fact-label" href="${esc(f.url)}" target="_blank" rel="noreferrer">${f.icon ? `<img class="content-mini-icon" src="${esc(f.icon)}" alt="" loading="lazy">` : ""}${esc(f.label)}</a>` : `<div class="content-fact-label">${esc(f.label)}</div>`; return `<article class="content-fact-item">${inner}</article>`; }).join(""),
+    "{{PROJECT_ITEMS}}": content.projects.map((p) => `<a class="content-project-card" href="${esc(p.url)}" target="_blank" rel="noreferrer"><img class="content-project-image" src="${esc(p.image)}" alt="${esc(p.name)}" loading="lazy" referrerpolicy="no-referrer"><div class="content-project-copy"><div class="content-project-name">${esc(p.name)}</div><div class="content-project-summary">${esc(p.subtitle)}</div></div></a>`).join(""),
+    "{{FACT_ITEMS}}": content.facts.map((f) => { const inner = f.url ? `<a class="content-fact-label" href="${esc(f.url)}" target="_blank" rel="noreferrer">${f.icon ? `<img class="content-mini-icon" src="${esc(f.icon)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : ""}${esc(f.label)}</a>` : `<div class="content-fact-label">${esc(f.label)}</div>`; return `<article class="content-fact-item">${inner}</article>`; }).join(""),
     "{{TALK_ITEMS}}": content.talks.map((t) => `<a class="content-talk-item" href="${esc(t.url)}" target="_blank" rel="noreferrer"><div class="content-talk-title">${esc(t.label)}</div><div class="content-talk-meta">Watch the talk</div></a>`).join(""),
     "{{DAILY_NOTE}}": esc(`${design.dailyLabel} \u00b7 ${design.formattedDate}`),
     "{{DAILY_LABEL}}": esc(design.dailyLabel),
