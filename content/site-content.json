@@ -40,7 +40,7 @@
       "name": "Toolrouter",
       "subtitle": "The easiest way to route AI tools",
       "url": "https://toolrouter.com",
-      "image": "/assets/toolrouter.ico"
+      "image": "/assets/toolrouter.png"
     },
     {
       "name": "Book Sparky",
@@ -58,13 +58,13 @@
       "name": "Famchat",
       "subtitle": "Safe AI app for families",
       "url": "https://famchatapp.com",
-      "image": "/assets/famchat.ico"
+      "image": "/assets/famchat.png"
     },
     {
       "name": "Magic Screenshots",
       "subtitle": "Instantly beautiful product shots",
       "url": "https://magicscreenshots.com",
-      "image": "/assets/magicscreenshots.png"
+      "image": "/assets/magicscreenshots.svg"
     }
   ],
   "facts": [
