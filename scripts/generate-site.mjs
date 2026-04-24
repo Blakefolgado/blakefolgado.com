@@ -12,6 +12,7 @@ const CONTENT_PATH = path.join(ROOT, "content", "site-content.json");
 const DEFAULT_OUTPUT_DIR = ROOT;
 const META_PATH = path.join(ROOT, "generated", "site-meta.json");
 const OG_IMAGE_PATH = path.join(ROOT, "og.png");
+const ASSETS_DIR = path.join(ROOT, "assets");
 
 const OPENROUTER_CHAT_URL = "https://openrouter.ai/api/v1/chat/completions";
 const SITE_URL = "https://blakefolgado.com/";
@@ -87,7 +88,10 @@ async function prepareOutputDirectory(outputDir) {
 }
 
 async function copyPublicAssets(outputDir) {
-  if (outputDir !== ROOT) await cp(OG_IMAGE_PATH, path.join(outputDir, "og.png"));
+  if (outputDir !== ROOT) {
+    await cp(OG_IMAGE_PATH, path.join(outputDir, "og.png"));
+    await cp(ASSETS_DIR, path.join(outputDir, "assets"), { recursive: true });
+  }
 }
 
 function getCurrentDateInTimezone(timezone) {

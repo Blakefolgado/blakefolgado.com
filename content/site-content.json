@@ -33,38 +33,50 @@
     {
       "name": "Outside",
       "subtitle": "Make things happen in real life!",
-      "url": "https://apps.apple.com/us/app/id6755601135",
-      "image": "https://is1-ssl.mzstatic.com/image/thumb/PurpleSource221/v4/45/59/f2/4559f29a-b883-8849-6f59-1ce0cb8847dd/Placeholder.mill/400x400bb-75.webp"
+      "url": "https://outside.so",
+      "image": "/assets/outside.png"
+    },
+    {
+      "name": "Toolrouter",
+      "subtitle": "The easiest way to route AI tools",
+      "url": "https://toolrouter.com",
+      "image": "/assets/toolrouter.ico"
+    },
+    {
+      "name": "Book Sparky",
+      "subtitle": "AI-powered booking assistant",
+      "url": "https://book-sparky.com",
+      "image": "/assets/booksparky.png"
     },
     {
       "name": "Sentrydock",
       "subtitle": "AI analyst for traders",
       "url": "https://sentrydock.com",
-      "image": "https://www.google.com/s2/favicons?domain=sentrydock.com&sz=128"
+      "image": "/assets/sentrydock.png"
     },
     {
       "name": "Famchat",
       "subtitle": "Safe AI app for families",
       "url": "https://famchatapp.com",
-      "image": "https://www.google.com/s2/favicons?domain=famchatapp.com&sz=128"
+      "image": "/assets/famchat.ico"
     },
     {
       "name": "Magic Screenshots",
       "subtitle": "Instantly beautiful product shots",
       "url": "https://magicscreenshots.com",
-      "image": "https://magicscreenshots.com/apple-touch-icon.png"
+      "image": "/assets/magicscreenshots.png"
     }
   ],
   "facts": [
     {
       "label": "Previous Product Director at Cuvva",
       "url": "https://www.cuvva.com",
-      "icon": "https://www.google.com/s2/favicons?domain=cuvva.com&sz=128"
+      "icon": "/assets/cuvva.png"
     },
     {
       "label": "Cohort 3 at Entrepreneur First",
       "url": "https://www.joinef.com",
-      "icon": "https://www.google.com/s2/favicons?domain=joinef.com&sz=128"
+      "icon": "/assets/joinef.png"
     },
     {
       "label": "Used to be a toy designer"
