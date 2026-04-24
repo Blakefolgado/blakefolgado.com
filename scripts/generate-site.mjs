@@ -18,26 +18,9 @@ const OPENROUTER_CHAT_URL = "https://openrouter.ai/api/v1/chat/completions";
 const SITE_URL = "https://blakefolgado.com/";
 const SITE_TITLE = "blakefolgado.com";
 const DAILY_REFRESH_UTC = { hour: 8, minute: 17 };
+const MIN_BODY_LENGTH = 600;
 
-const REQUIRED_TEMPLATE_TOKENS = [
-  "{{PROFILE_IMAGE_URL}}",
-  "{{NAME}}",
-  "{{BIO}}",
-  "{{SOCIAL_LINK_ITEMS}}",
-  "{{PROJECT_ITEMS}}",
-  "{{FACT_ITEMS}}",
-  "{{TALK_ITEMS}}",
-  "{{DAILY_NOTE}}",
-  "{{STATUS_PANELS}}"
-];
-
-const MULTI_ELEMENT_TEMPLATE_TOKENS = [
-  "{{SOCIAL_LINK_ITEMS}}",
-  "{{PROJECT_ITEMS}}",
-  "{{FACT_ITEMS}}",
-  "{{TALK_ITEMS}}",
-  "{{STATUS_PANELS}}"
-];
+const FORBIDDEN_TAG_REGEX = /<(?:!DOCTYPE|html|head|body|title|link|meta|base)\b/i;
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
@@ -111,70 +94,89 @@ function hashStringToInt(value) {
   return createHash("sha256").update(value).digest().readUInt32BE(0);
 }
 
+const SYSTEM_PROMPT = [
+  "You are an experimental artist shipping a DAILY INTERNET ART PIECE that lives at one URL.",
+  "It is not a website. It is not a portfolio. It is an interactive artefact — a toy, a game, a puzzle, a simulator, a weird UI. Something a person would screenshot and share because it's unexpected.",
+  "",
+  "EVERY DAY YOU MUST INVENT SOMETHING STRUCTURALLY DIFFERENT. Not a different colour scheme over the same cards-in-a-grid. A different KIND of thing.",
+  "",
+  "PICK ONE FORM (rotate — never repeat yesterday's category):",
+  "- Playable game: snake, pong, tic-tac-toe, minesweeper, breakout, solitaire, memory match, simon-says, dodger, typing race, reaction timer, chess puzzle, clicker, whack-a-mole, flappy bird, space invaders.",
+  "- Interactive toy: drawing pad, particle fountain, physics sandbox, music sequencer, drum machine, synth keyboard, magic 8-ball, tarot draw, oracle, fortune teller, fake ouija, radio dial, TV tuner.",
+  "- Puzzle: sliding tile, crossword, maze, word unscramble, hidden object, logic grid, riddle, one-screen escape room, cipher, pipe connector.",
+  "- Simulator: Conway's Life, flocking birds, plant growth, orbit, weather, pendulum, ant colony, lava lamp, fireflies, starfield, ecosystem.",
+  "- Generative art that reacts: Perlin landscape, ASCII fractal, cellular automaton, mouse-trail painter, spirograph, kaleidoscope, pixel-by-pixel bloom.",
+  "- Weird UI: terminal REPL, text adventure, fake OS desktop with draggable windows, fax machine, pager, answering machine, typewriter, elevator panel, dial-up modem, CRT TV, Teletext, BBS forum, vending machine.",
+  "",
+  "HARD REQUIREMENTS (failure to meet any = garbage output):",
+  "1. INTERACTIVE. Something must respond to clicks, keys, drags, scroll, touch, hover, or tilt. Static scrolling pages are failures.",
+  "2. EMBED THE PERSON'S DATA INSIDE THE EXPERIENCE. Not as a contact card. Examples:",
+  "   - name = title of the text adventure, or the game-over screen, or the high-score holder",
+  "   - projects = inventory items, app icons on a fake desktop, cards in a deck, stations on a dial, rooms in a map",
+  "   - facts = fortune cookies, oracle readings, NPC dialogue, lore tooltips, loading-screen tips",
+  "   - talks = tracks on a radio, channels on a TV, tapes in a deck, files on a drive",
+  "   - socials = exits in a maze, NPCs, inbox items, contacts in a fake phone",
+  "   - email = hidden reward at the end",
+  "3. No external fetch(). No CDN imports. No dynamic code execution from strings.",
+  "4. Works on mobile touch AND desktop mouse+keyboard. Use pointer events where possible.",
+  "5. STABLE. No infinite loops. No runaway setInterval. Use requestAnimationFrame for animation. Listen for resize. Clean up listeners. Handle the case where the user has no mouse or no keyboard.",
+  "6. All project URLs, social URLs, talk URLs, and email must be REACHABLE inside the experience (clickable, selectable). If a user can't get from the artefact to a real link, you failed.",
+  "7. If you render the profile image, use referrerpolicy=\"no-referrer\" on the <img>.",
+  "8. No TypeScript. No JSX. Plain HTML + CSS + JS. No framework imports.",
+  "",
+  "STYLE:",
+  "- Fonts provided as CSS variables; use them or override in your <style>.",
+  "- Theme colours provided as CSS variables; use them or override.",
+  "- Keep CSS and JS tight. No dead code. No comments describing what the code does.",
+  "- Prefer canvas or inline SVG for graphics. Prefer CSS animations over JS loops when you can.",
+  "",
+  "YOUR OUTPUT: a single JSON object, exactly these fields:",
+  "{",
+  "  \"theme_name\": \"a creative name for today's piece\",",
+  "  \"primary_font\": \"Google Fonts name for body\",",
+  "  \"display_font\": \"Google Fonts name for headings\",",
+  "  \"theme\": { \"background\": \"#hex\", \"surface\": \"#hex\", \"text\": \"#hex\", \"muted\": \"#hex\", \"accent\": \"#hex\", \"accent_alt\": \"#hex\", \"border\": \"#hex\" },",
+  "  \"daily_label\": \"a short tagline for today's drop\",",
+  "  \"body_html\": \"the full interactive fragment, including inline <style> and <script> tags\"",
+  "}",
+  "",
+  "BODY_HTML RULES:",
+  "- The fragment gets inserted directly inside <body>. Write <style> and <script> tags in it.",
+  "- DO NOT include: <!DOCTYPE>, <html>, <head>, <body>, <link>, <meta>, <title>, <base>.",
+  "- CSS vars on :root: --bg, --surface, --text, --muted, --accent, --accent-alt, --border, --font-body, --font-display.",
+  "- All scripts run inline. Wrap your JS in an IIFE. Don't pollute global scope.",
+  "- No module imports, no require, no ES modules syntax.",
+  "",
+  "BE BOLD. BE WEIRD. BE SPECIFIC. Don't make a personal site. Make a thing worth sharing.",
+  "",
+  "Return valid JSON only, no markdown fences."
+].join("\n");
+
 async function generatePage({ apiKey, content, dateSeed, numericSeed }) {
+  const personPayload = {
+    date: dateSeed,
+    formattedDate: formatHumanDate(dateSeed),
+    person: {
+      name: content.person.name,
+      bio: content.person.tagline,
+      email: content.person.email,
+      profileImage: content.site.images.profile,
+      socials: content.person.socials,
+      projects: content.projects,
+      facts: content.facts,
+      talks: content.talks
+    },
+    location: content.site.locationLabel,
+    timezone: content.site.timezone
+  };
+
   const baseBody = {
     model: "moonshotai/kimi-k2.6",
     messages: [
-      {
-        role: "system",
-        content: [
-          "You are a wildly creative front-end designer. You build a page that shows a person's info — but it can take ANY form.",
-          "A brutalist zine. A retro OS desktop. A space mission control panel. A newspaper. A game UI. A travel postcard. An art gallery. A terminal. A 90s geocities page. A cyberpunk HUD. A film credits sequence. Anything you can imagine.",
-          "This regenerates daily. Every day must feel like a completely different experience. Push boundaries. Surprise people.",
-          "",
-          "YOUR OUTPUT: Return a single JSON object with these fields:",
-          "",
-          "theme_name  — a creative name for today's concept",
-          "primary_font — a Google Fonts name for body text",
-          "display_font — a Google Fonts name for display/heading text",
-          "theme — an object with hex color values: { background, surface, text, muted, accent, accent_alt, border }",
-          "daily_label — a short tagline for today's edition",
-          "body_html — the full HTML fragment (see rules below)",
-          "",
-          "BODY_HTML RULES:",
-          "This fragment gets inserted inside an existing <body> tag. You can include <style> tags for CSS.",
-          "",
-          "DO NOT include: <!DOCTYPE>, <html>, <head>, <body>, <script>, <link>, <meta>, or <title> tags.",
-          "",
-          "CSS variables are pre-defined on :root and available to use:",
-          "var(--bg), var(--surface), var(--text), var(--muted), var(--accent), var(--accent-alt), var(--border), var(--font-body), var(--font-display)",
-          "",
-          "CONTENT TOKENS — these are required placeholders that get replaced with real data. All must appear in body_html:",
-          "",
-          "{{PROFILE_IMAGE_URL}} — use as an <img> src with referrerpolicy=\"no-referrer\". Never use it in CSS url(). Style the image however you want.",
-          "{{NAME}} — the person's name",
-          "{{BIO}} — a short tagline",
-          "{{DAILY_NOTE}} — text string with the edition label and date",
-          "",
-          "{{SOCIAL_LINK_ITEMS}} — expands to multiple <a> elements",
-          "{{PROJECT_ITEMS}} — expands to multiple card elements (each is an <a> with an image and text)",
-          "{{FACT_ITEMS}} — expands to multiple <article> elements",
-          "{{TALK_ITEMS}} — expands to multiple <a> elements",
-          "{{STATUS_PANELS}} — expands to status display elements",
-          "",
-          "IMPORTANT: The multi-element tokens above expand to sibling HTML elements. They MUST be placed directly inside a <div>, <section>, <nav>, <article>, <aside>, <header>, <footer>, or <main>.",
-          "NEVER place them inside: <ul>, <ol>, <dl>, <table>, <tr>, <select>, <p>, <a>, or <button>.",
-          "",
-          "These expanded elements have their own base styles (padding, borders, border-radius). Your CSS can override them — style them however fits your concept.",
-          "",
-          "QUALITY BAR:",
-          "- The page must work on mobile and desktop. Include responsive CSS.",
-          "- All content must be visible and readable — no clipping, no invisible text.",
-          "- The page must scroll if content overflows. Never overflow:hidden on the root container.",
-          "- Be bold with the visual concept, but the HTML/CSS must actually work.",
-          "",
-          "Only use the person data provided. Return valid JSON only, no markdown fences."
-        ].join("\n")
-      },
-      {
-        role: "user",
-        content: JSON.stringify({
-          date: dateSeed,
-          person: { name: content.person.name, bio: content.person.tagline, projects: content.projects.map((p) => p.name), facts: content.facts.map((f) => f.label), talks: content.talks.map((t) => t.label) }
-        })
-      }
+      { role: "system", content: SYSTEM_PROMPT },
+      { role: "user", content: JSON.stringify(personPayload) }
     ],
-    temperature: 1.2,
+    temperature: 1.25,
     seed: numericSeed
   };
 
@@ -200,8 +202,9 @@ async function generatePage({ apiKey, content, dateSeed, numericSeed }) {
       lastError = error;
       retryNote = [
         `Your previous response could not be published because: ${error.message}.`,
-        "Return fresh JSON with a new body_html fragment that obeys the exact token and valid-container rules.",
-        "Do not wrap multi-element tokens in paragraph, list, table, anchor, or button containers."
+        "Return fresh JSON. body_html must be a complete, working, INTERACTIVE fragment.",
+        "Do NOT include <!DOCTYPE>, <html>, <head>, <body>, <link>, <meta>, <title>, or <base> tags.",
+        "Include inline <style> and <script>. It must NOT be a scrolling card layout."
       ].join(" ");
     }
   }
@@ -228,7 +231,7 @@ async function callOpenRouter(apiKey, body) {
 function str(v) { return typeof v === "string" ? v.replace(/[\r\n\t]+/g, " ").trim().slice(0, 80) : ""; }
 
 function normalizeGeneratedDesign({ data, dateSeed }) {
-  const themeName = str(data.theme_name) || "Daily Edition";
+  const themeName = str(data.theme_name) || "Daily Drop";
   const primaryFont = str(data.primary_font) || "Inter";
   const displayFont = str(data.display_font) || "Space Grotesk";
   const fallbackTheme = { background: "#0a0a0f", surface: "#161622", text: "#f0f0f5", muted: "#8888a0", accent: "#5af2c6", accent_alt: "#ff6b9d", border: "#2a2a3a" };
@@ -238,13 +241,8 @@ function normalizeGeneratedDesign({ data, dateSeed }) {
     theme[key] = (typeof v === "string" && /^#[0-9a-fA-F]{6}$/.test(v.trim())) ? v.trim() : fallbackTheme[key];
   }
   const dailyLabel = str(data.daily_label) || themeName;
-  const fragment = normalizeHtmlFragment(data.body_html);
-
-  if (!fragment.markup || !REQUIRED_TEMPLATE_TOKENS.every((t) => fragment.markup.includes(t))) {
-    throw new Error("Generated HTML missing required tokens");
-  }
-
-  validateFragmentMarkup(fragment.markup);
+  const bodyHtml = normalizeBodyHtml(data.body_html);
+  validateBodyHtml(bodyHtml);
 
   return {
     themeName,
@@ -252,95 +250,41 @@ function normalizeGeneratedDesign({ data, dateSeed }) {
     displayFont,
     theme,
     dailyLabel,
-    layoutCss: fragment.styles,
-    bodyHtml: fragment.markup,
+    bodyHtml,
     formattedDate: formatHumanDate(dateSeed)
   };
 }
 
-function normalizeHtmlFragment(v) {
-  if (typeof v !== "string") return { styles: "", markup: "" };
+function normalizeBodyHtml(v) {
+  if (typeof v !== "string") return "";
+  let html = v.trim();
+  if (!html) return "";
 
-  const html = v.trim();
-  if (!html) return { styles: "", markup: "" };
-
-  const styleMatches = [...html.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/gi)].map((match) => match[1].trim()).filter(Boolean);
   const bodyMatch = html.match(/<body\b[^>]*>([\s\S]*?)<\/body>/i);
+  if (bodyMatch) html = bodyMatch[1];
 
-  let content = bodyMatch
-    ? bodyMatch[1]
-    : html
-        .replace(/<!DOCTYPE[^>]*>/gi, "")
-        .replace(/<head\b[^>]*>[\s\S]*?<\/head>/gi, "")
-        .replace(/<\/?(?:html|body)\b[^>]*>/gi, "");
-
-  content = content
-    .replace(/<\/?(?:head)\b[^>]*>/gi, "")
-    .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, "")
-    .replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "")
-    .replace(/<title\b[^>]*>[\s\S]*?<\/title>/gi, "")
-    .replace(/<(?:meta|link|base)\b[^>]*\/?>/gi, "")
+  return html
+    .replace(/<!DOCTYPE[^>]*>/gi, "")
+    .replace(/<\/?(?:html|head|body|title)\b[^>]*>/gi, "")
+    .replace(/<(?:link|meta|base)\b[^>]*\/?>/gi, "")
     .trim();
-
-  const orderedStyles = [];
-  const seenStyles = new Set();
-  for (const style of styleMatches) {
-    if (seenStyles.has(style)) continue;
-    seenStyles.add(style);
-    orderedStyles.push(style);
-  }
-
-  return { styles: orderedStyles.join("\n"), markup: content };
 }
 
-function validateFragmentMarkup(markup) {
-  if (/(?:<!DOCTYPE|<\/?(?:html|head|body|script|title)\b|<(?:meta|link|base)\b)/i.test(markup)) {
-    throw new Error("Generated HTML contains document-level or disallowed tags");
+function validateBodyHtml(html) {
+  if (!html || html.length < MIN_BODY_LENGTH) {
+    throw new Error(`body_html too short (${html?.length ?? 0} chars, need at least ${MIN_BODY_LENGTH})`);
   }
-
-  const invalidContainers = ["ul", "ol", "dl", "table", "thead", "tbody", "tfoot", "tr", "select", "p", "a", "button"];
-  for (const token of MULTI_ELEMENT_TEMPLATE_TOKENS) {
-    const tokenPattern = escapeRegExp(token);
-    for (const tag of invalidContainers) {
-      const containerPattern = new RegExp(`<${tag}\\b[^>]*>[\\s\\S]*?${tokenPattern}[\\s\\S]*?<\\/${tag}>`, "i");
-      if (containerPattern.test(markup)) {
-        throw new Error(`Generated HTML places ${token} inside <${tag}>`);
-      }
-    }
+  if (FORBIDDEN_TAG_REGEX.test(html)) {
+    throw new Error("body_html contains document-level tags that couldn't be stripped");
   }
-}
-
-function validateRenderedHtml(html) {
-  if (/<style\b[^>]*>[\s\S]*<style\b/i.test(html)) {
-    throw new Error("Rendered HTML contains nested <style> tags");
+  if (!/<script\b[^>]*>[\s\S]*?<\/script>/i.test(html) && !/<style\b[^>]*>[\s\S]*?<\/style>/i.test(html)) {
+    throw new Error("body_html missing <style> and <script> — must include inline styles and scripts for an interactive piece");
   }
 }
 
 function renderSite({ content, dateSeed, design }) {
-  const tokenMap = {
-    "{{PROFILE_IMAGE_URL}}": esc(content.site.images.profile),
-    "{{NAME}}": esc(content.person.name),
-    "{{BIO}}": esc(content.person.tagline),
-    "{{SOCIAL_LINK_ITEMS}}": content.person.socials.map((s) => `<a class="content-social-link" href="${esc(s.url)}" ${s.url.startsWith("http") ? 'target="_blank" rel="noreferrer"' : ""}>${esc(s.label)}</a>`).join(""),
-    "{{PROJECT_ITEMS}}": content.projects.map((p) => `<a class="content-project-card" href="${esc(p.url)}" target="_blank" rel="noreferrer"><img class="content-project-image" src="${esc(p.image)}" alt="${esc(p.name)}" loading="lazy" referrerpolicy="no-referrer"><div class="content-project-copy"><div class="content-project-name">${esc(p.name)}</div><div class="content-project-summary">${esc(p.subtitle)}</div></div></a>`).join(""),
-    "{{FACT_ITEMS}}": content.facts.map((f) => { const inner = f.url ? `<a class="content-fact-label" href="${esc(f.url)}" target="_blank" rel="noreferrer">${f.icon ? `<img class="content-mini-icon" src="${esc(f.icon)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : ""}${esc(f.label)}</a>` : `<div class="content-fact-label">${esc(f.label)}</div>`; return `<article class="content-fact-item">${inner}</article>`; }).join(""),
-    "{{TALK_ITEMS}}": content.talks.map((t) => `<a class="content-talk-item" href="${esc(t.url)}" target="_blank" rel="noreferrer"><div class="content-talk-title">${esc(t.label)}</div><div class="content-talk-meta">Watch the talk</div></a>`).join(""),
-    "{{DAILY_NOTE}}": esc(`${design.dailyLabel} \u00b7 ${design.formattedDate}`),
-    "{{DAILY_LABEL}}": esc(design.dailyLabel),
-    "{{FORMATTED_DATE}}": esc(design.formattedDate),
-    "{{daily_label}}": esc(design.dailyLabel),
-    "{{formatted_date}}": esc(design.formattedDate),
-    "{{date}}": esc(design.formattedDate),
-    "{{STATUS_PANELS}}": `<div class="content-status-strip"><div class="content-status-panel"><div class="content-status-label">${esc(content.site.locationLabel)} time</div><div class="content-status-value" data-role="local-time">--</div></div><div class="content-status-panel"><div class="content-status-label">${esc(content.site.locationLabel)} weather</div><div class="content-status-value" data-role="local-weather">Loading...</div></div></div>`
-  };
-
-  let body = design.bodyHtml;
-  for (const [token, value] of Object.entries(tokenMap)) body = body.split(token).join(value);
-  if (/{{\s*[^}]+\s*}}/.test(body)) throw new Error("Rendered HTML contains unresolved template tokens");
-
   const fonts = [...new Set([design.primaryFont, design.displayFont])].map((f) => f.replace(/ /g, "+") + ":wght@300;400;500;600;700;800").join("&family=");
   const cfg = JSON.stringify({ timezone: content.site.timezone, locationLabel: content.site.locationLabel, weather: content.site.weather, refreshScheduleUtc: DAILY_REFRESH_UTC }).replace(/</g, "\\u003c");
-  const layoutCss = design.layoutCss ? `\n    ${design.layoutCss}` : "";
 
   const htmlDoc = `<!DOCTYPE html>
 <html lang="en">
@@ -369,115 +313,77 @@ function renderSite({ content, dateSeed, design }) {
   <script defer src="/_vercel/insights/script.js"></script>
   <style>
     :root{--bg:${design.theme.background};--surface:${design.theme.surface};--text:${design.theme.text};--muted:${design.theme.muted};--accent:${design.theme.accent};--accent-alt:${design.theme.accent_alt};--border:${design.theme.border};--font-body:"${design.primaryFont}",sans-serif;--font-display:"${design.displayFont}",sans-serif}
-    *,*::before,*::after{box-sizing:border-box}html{min-height:100%}body{margin:0;min-height:100vh;color:var(--text);background:var(--bg);font-family:var(--font-body);line-height:1.5;overflow-x:hidden}img{max-width:100%}a{color:inherit}
-    ${tokenFallbackCss()}
-    ${layoutCss}
-    .refresh-pill{position:fixed;right:max(1rem,env(safe-area-inset-right));bottom:max(1rem,env(safe-area-inset-bottom));z-index:9999;padding:.5rem .8rem;border:1px solid color-mix(in srgb,var(--accent) 24%,var(--border));border-radius:999px;background:rgba(10,10,12,.75);backdrop-filter:blur(14px);pointer-events:none;font-size:.7rem;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;white-space:nowrap}
+    *,*::before,*::after{box-sizing:border-box}html,body{margin:0;padding:0;min-height:100%}body{background:var(--bg);color:var(--text);font-family:var(--font-body);line-height:1.5;overflow-x:hidden}img{max-width:100%}a{color:inherit}
+    .refresh-pill{position:fixed;right:max(.6rem,env(safe-area-inset-right));bottom:max(.6rem,env(safe-area-inset-bottom));z-index:9999;padding:.4rem .7rem;border:1px solid color-mix(in srgb,var(--accent) 24%,var(--border));border-radius:999px;background:rgba(10,10,12,.65);backdrop-filter:blur(14px);pointer-events:none;font-size:.62rem;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;white-space:nowrap;font-family:var(--font-body)}
     .refresh-pill span{color:var(--text);font-family:var(--font-display)}
-    @media(max-width:640px){.refresh-pill{left:.6rem;right:.6rem;border-radius:16px;text-align:center}}
+    @media(max-width:640px){.refresh-pill{font-size:.55rem;padding:.3rem .55rem}}
   </style>
 </head>
 <body>
-  ${body}
-  <div class="refresh-pill">New website generated in <span data-role="design-countdown">--</span></div>
-  <script id="daily-site-config" type="application/json">${cfg}</script>
-  <script>${clientJs()}</script>
+${design.bodyHtml}
+<div class="refresh-pill">next drop in <span data-role="design-countdown">--</span></div>
+<script id="daily-site-config" type="application/json">${cfg}</script>
+<script>${clientJs()}</script>
 </body>
 </html>
 `;
 
-  validateRenderedHtml(htmlDoc);
   return htmlDoc;
 }
 
 function esc(v) { return String(v).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;"); }
 
-function escapeRegExp(value) { return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); }
-
-function tokenFallbackCss() {
-  return [
-    ".content-social-link,.content-project-card,.content-fact-label,.content-talk-item{color:inherit;text-decoration:none;transition:transform .2s ease,border-color .2s ease,background .2s ease}",
-    ".content-social-link{display:inline-flex;align-items:center;gap:.45rem;padding:.5rem .85rem;border-radius:999px;border:1px solid color-mix(in srgb,var(--accent) 28%,var(--border));background:color-mix(in srgb,var(--surface) 82%,transparent);font-size:.92rem;font-weight:600}",
-    ".content-project-card{display:grid;grid-template-columns:minmax(0,4.5rem) minmax(0,1fr);gap:.9rem;align-items:center;padding:.95rem;border-radius:1rem;border:1px solid color-mix(in srgb,var(--border) 78%,var(--accent) 22%);background:color-mix(in srgb,var(--surface) 90%,transparent)}",
-    ".content-project-image{width:4.5rem;height:4.5rem;border-radius:1.15rem;object-fit:cover;display:block;background:color-mix(in srgb,var(--surface) 68%,black)}",
-    ".content-project-copy{display:grid;gap:.2rem;min-width:0}",
-    ".content-project-name,.content-talk-title,.content-status-value{font-weight:700;line-height:1.2}",
-    ".content-project-summary,.content-talk-meta,.content-status-label{color:var(--muted)}",
-    ".content-project-summary,.content-talk-meta{font-size:.95rem}",
-    ".content-fact-item{display:block}",
-    ".content-fact-label{display:flex;align-items:center;gap:.7rem;padding:.8rem .95rem;border-radius:1rem;border:1px solid color-mix(in srgb,var(--border) 80%,var(--accent-alt) 20%);background:color-mix(in srgb,var(--surface) 88%,transparent)}",
-    ".content-mini-icon{width:1.75rem;height:1.75rem;border-radius:.55rem;object-fit:cover;flex:none;background:color-mix(in srgb,var(--surface) 68%,black)}",
-    ".content-talk-item{display:grid;gap:.22rem;padding:.9rem 1rem;border-radius:1rem;border:1px solid color-mix(in srgb,var(--border) 80%,var(--accent-alt) 20%);background:color-mix(in srgb,var(--surface) 90%,transparent)}",
-    ".content-status-strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(10rem,1fr));gap:.8rem;width:100%}",
-    ".content-status-panel{padding:.9rem 1rem;border-radius:1rem;border:1px solid color-mix(in srgb,var(--border) 76%,var(--accent) 24%);background:color-mix(in srgb,var(--surface) 90%,transparent)}",
-    ".content-status-label{text-transform:uppercase;letter-spacing:.08em;font-size:.72rem}",
-    ".content-status-value{margin-top:.3rem;font-size:1.05rem}",
-    "@media(hover:hover){.content-social-link:hover,.content-project-card:hover,.content-fact-label:hover,.content-talk-item:hover{transform:translateY(-1px);border-color:color-mix(in srgb,var(--accent) 44%,var(--border))}}",
-    "@media(max-width:640px){.content-project-card{grid-template-columns:minmax(0,3.5rem) minmax(0,1fr);padding:.8rem}.content-project-image{width:3.5rem;height:3.5rem;border-radius:.95rem}}"
-  ].join("");
-}
-
 function createMockDesign({ dateSeed, numericSeed }) {
   const palettes = [
-    { background: "#0f172a", surface: "#172554", text: "#eff6ff", muted: "#bfdbfe", accent: "#22d3ee", accent_alt: "#38bdf8", border: "#1d4ed8" },
-    { background: "#111827", surface: "#1f2937", text: "#f9fafb", muted: "#cbd5e1", accent: "#f59e0b", accent_alt: "#fb7185", border: "#374151" },
-    { background: "#052e16", surface: "#14532d", text: "#ecfdf5", muted: "#bbf7d0", accent: "#34d399", accent_alt: "#22d3ee", border: "#166534" }
+    { background: "#0a0a0f", surface: "#141420", text: "#f0f0f5", muted: "#8888a0", accent: "#5af2c6", accent_alt: "#ff6b9d", border: "#2a2a3a" },
+    { background: "#1a0033", surface: "#2a0055", text: "#ffeeff", muted: "#aa88cc", accent: "#ffcc00", accent_alt: "#ff00aa", border: "#3a0066" }
   ];
   const palette = palettes[numericSeed % palettes.length];
-  const labels = ["Signal Bloom", "Orbit Edition", "Canvas Shift"];
-
   return {
-    themeName: "Mock Daily Edition",
-    primaryFont: "Inter",
-    displayFont: "Space Grotesk",
+    themeName: "Mock Letter Toy",
+    primaryFont: "IBM Plex Mono",
+    displayFont: "Space Mono",
     theme: palette,
-    dailyLabel: labels[numericSeed % labels.length],
-    layoutCss: [
-      ".daily-shell{max-width:72rem;margin:0 auto;padding:clamp(1rem,2vw,2rem);display:grid;gap:1rem}",
-      ".daily-hero{display:grid;grid-template-columns:minmax(0,7rem) minmax(0,1fr);gap:1rem;align-items:center;padding:1.25rem;border-radius:1.5rem;background:color-mix(in srgb,var(--surface) 92%,transparent);border:1px solid var(--border)}",
-      ".daily-hero img{width:7rem;height:7rem;border-radius:1.5rem;object-fit:cover;border:2px solid color-mix(in srgb,var(--accent) 60%,var(--border))}",
-      ".daily-kicker{font-size:.8rem;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}",
-      ".daily-title{margin:.3rem 0 0;font:700 clamp(2rem,5vw,4rem)/.95 var(--font-display)}",
-      ".daily-bio{margin:.65rem 0 0;max-width:40rem;color:var(--muted);font-size:1.05rem}",
-      ".daily-meta{display:flex;flex-wrap:wrap;gap:.75rem;margin-top:1rem}",
-      ".daily-grid{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);gap:1rem}",
-      ".daily-panel{padding:1.1rem;border-radius:1.35rem;background:color-mix(in srgb,var(--surface) 88%,transparent);border:1px solid var(--border);display:grid;gap:.9rem}",
-      ".daily-panel h2{margin:0;font:700 1.1rem/1.1 var(--font-display)}",
-      ".daily-stack{display:grid;gap:.8rem}",
-      ".daily-note{font-size:1.05rem}",
-      "@media(max-width:860px){.daily-hero{grid-template-columns:1fr;text-align:center}.daily-hero img{margin:0 auto}.daily-grid{grid-template-columns:1fr}}"
-    ].join(""),
-    bodyHtml: `<main class="daily-shell">
-      <section class="daily-hero">
-        <img src="{{PROFILE_IMAGE_URL}}" alt="{{NAME}}">
-        <div>
-          <div class="daily-kicker">Mock preview for ${esc(dateSeed)}</div>
-          <h1 class="daily-title">{{NAME}}</h1>
-          <p class="daily-bio">{{BIO}}</p>
-          <div class="daily-meta">{{SOCIAL_LINK_ITEMS}}</div>
-        </div>
-      </section>
-      <section class="daily-grid">
-        <section class="daily-panel">
-          <h2>Today</h2>
-          <div class="daily-note">{{DAILY_NOTE}}</div>
-          {{STATUS_PANELS}}
-          <div class="daily-stack">{{FACT_ITEMS}}</div>
-        </section>
-        <section class="daily-stack">
-          <section class="daily-panel">
-            <h2>Projects</h2>
-            <div class="daily-stack">{{PROJECT_ITEMS}}</div>
-          </section>
-          <section class="daily-panel">
-            <h2>Talks</h2>
-            <div class="daily-stack">{{TALK_ITEMS}}</div>
-          </section>
-        </section>
-      </section>
-    </main>`,
+    dailyLabel: "Mock drop",
+    bodyHtml: mockBodyHtml(),
     formattedDate: formatHumanDate(dateSeed)
   };
+}
+
+function mockBodyHtml() {
+  return `<style>
+body{font-family:var(--font-body);overflow:hidden;height:100vh}
+.stage{position:fixed;inset:0;display:grid;place-items:center}
+.word{font-family:var(--font-display);font-size:clamp(2.5rem,12vw,7rem);font-weight:700;letter-spacing:.02em;user-select:none}
+.word span{display:inline-block;cursor:pointer;transition:transform .25s cubic-bezier(.2,.9,.3,1.4),color .2s}
+.word span:hover{color:var(--accent);transform:translateY(-.35rem) rotate(-6deg)}
+.hint{position:fixed;left:0;right:0;bottom:3.2rem;text-align:center;color:var(--muted);font-size:.8rem;letter-spacing:.2em;text-transform:uppercase}
+.links{position:fixed;top:1.2rem;left:1.2rem;display:flex;flex-direction:column;gap:.4rem}
+.links a{font-size:.75rem;color:var(--muted);text-decoration:none;border-bottom:1px dashed var(--border);padding-bottom:.15rem}
+.links a:hover{color:var(--accent-alt)}
+</style>
+<div class="stage">
+  <div class="word" id="mock-word"></div>
+</div>
+<div class="links">
+  <a href="mailto:blake@blakefolgado.com">email</a>
+  <a href="https://x.com/blakefolgado" target="_blank" rel="noreferrer">x</a>
+</div>
+<div class="hint">click the letters</div>
+<script>
+(function(){
+  var word=document.getElementById('mock-word');
+  'BLAKE FOLGADO'.split('').forEach(function(ch){
+    var s=document.createElement('span');
+    s.textContent=ch===' '?'\\u00A0':ch;
+    s.addEventListener('click',function(){
+      s.style.color='hsl('+Math.floor(Math.random()*360)+',80%,65%)';
+      s.style.transform='translateY('+(Math.random()*-20-5)+'px) rotate('+(Math.random()*40-20)+'deg)';
+    });
+    word.appendChild(s);
+  });
+})();
+</script>`;
 }
 
 function clientJs() {
