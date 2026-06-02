@@ -43,10 +43,10 @@
       "image": "/assets/toolrouter.png"
     },
     {
-      "name": "Book Sparky",
-      "subtitle": "AI-powered booking assistant",
-      "url": "https://book-sparky.com",
-      "image": "/assets/booksparky.png"
+      "name": "Tradejoy",
+      "subtitle": "The AI back-office for trades",
+      "url": "https://tradejoy.com",
+      "image": "/assets/tradejoy.png"
     },
     {
       "name": "Sentrydock",
