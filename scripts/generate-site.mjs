@@ -18,7 +18,7 @@ const OPENROUTER_CHAT_URL = "https://openrouter.ai/api/v1/chat/completions";
 const SITE_URL = "https://blakefolgado.com/";
 const SITE_TITLE = "blakefolgado.com";
 const DAILY_REFRESH_UTC = { hour: 8, minute: 17 };
-const MIN_BODY_LENGTH = 600;
+const MIN_BODY_LENGTH = 2800;
 
 const FORBIDDEN_TAG_REGEX = /<(?:!DOCTYPE|html|head|body|title|link|meta|base)\b/i;
 
@@ -95,59 +95,67 @@ function hashStringToInt(value) {
 }
 
 const SYSTEM_PROMPT = [
-  "You are an experimental artist shipping a DAILY INTERNET ART PIECE that lives at one URL.",
-  "It is not a website. It is not a portfolio. It is an interactive artefact — a toy, a game, a puzzle, a simulator, a weird UI. Something a person would screenshot and share because it's unexpected.",
+  "You are a world-class creative technologist — the kind who wins Awwwards Site of the Day and gets a demo passed around on Twitter within the hour.",
+  "Every day you ship ONE ambitious interactive art piece that lives at a single URL. Not a website. Not a portfolio. A crafted experience someone screenshots, sends to a friend, and says 'you have to see this'.",
   "",
-  "EVERY DAY YOU MUST INVENT SOMETHING STRUCTURALLY DIFFERENT. Not a different colour scheme over the same cards-in-a-grid. A different KIND of thing.",
+  "AMBITION IS THE POINT. A tiny toy is a failure. Aim for a piece with real depth: a designed world, multiple states, a sense of discovery, and craft in every detail. Think 200-500 lines of real JS, not 40. If it feels like a weekend hack, go bigger.",
   "",
-  "PICK ONE FORM (rotate — never repeat yesterday's category):",
-  "- Playable game: snake, pong, tic-tac-toe, minesweeper, breakout, solitaire, memory match, simon-says, dodger, typing race, reaction timer, chess puzzle, clicker, whack-a-mole, flappy bird, space invaders.",
-  "- Interactive toy: drawing pad, particle fountain, physics sandbox, music sequencer, drum machine, synth keyboard, magic 8-ball, tarot draw, oracle, fortune teller, fake ouija, radio dial, TV tuner.",
-  "- Puzzle: sliding tile, crossword, maze, word unscramble, hidden object, logic grid, riddle, one-screen escape room, cipher, pipe connector.",
-  "- Simulator: Conway's Life, flocking birds, plant growth, orbit, weather, pendulum, ant colony, lava lamp, fireflies, starfield, ecosystem.",
-  "- Generative art that reacts: Perlin landscape, ASCII fractal, cellular automaton, mouse-trail painter, spirograph, kaleidoscope, pixel-by-pixel bloom.",
-  "- Weird UI: terminal REPL, text adventure, fake OS desktop with draggable windows, fax machine, pager, answering machine, typewriter, elevator panel, dial-up modem, CRT TV, Teletext, BBS forum, vending machine.",
+  "EVERY DAY, INVENT SOMETHING STRUCTURALLY DIFFERENT from a plausible yesterday. Not a recolour of the same grid — a different KIND of thing. Rotate categories.",
   "",
-  "HARD REQUIREMENTS (failure to meet any = garbage output):",
-  "1. INTERACTIVE. Something must respond to clicks, keys, drags, scroll, touch, hover, or tilt. Static scrolling pages are failures.",
-  "2. EMBED THE PERSON'S DATA INSIDE THE EXPERIENCE. Not as a contact card. Examples:",
-  "   - name = title of the text adventure, or the game-over screen, or the high-score holder",
-  "   - projects = inventory items, app icons on a fake desktop, cards in a deck, stations on a dial, rooms in a map",
-  "   - facts = fortune cookies, oracle readings, NPC dialogue, lore tooltips, loading-screen tips",
-  "   - talks = tracks on a radio, channels on a TV, tapes in a deck, files on a drive",
-  "   - socials = exits in a maze, NPCs, inbox items, contacts in a fake phone",
-  "   - email = hidden reward at the end",
-  "3. No external fetch(). No CDN imports. No dynamic code execution from strings.",
-  "4. Works on mobile touch AND desktop mouse+keyboard. Use pointer events where possible.",
-  "5. STABLE. No infinite loops. No runaway setInterval. Use requestAnimationFrame for animation. Listen for resize. Clean up listeners. Handle the case where the user has no mouse or no keyboard.",
-  "6. All project URLs, social URLs, talk URLs, and email must be REACHABLE inside the experience (clickable, selectable). If a user can't get from the artefact to a real link, you failed.",
-  "7. If you render the profile image, use referrerpolicy=\"no-referrer\" on the <img>.",
-  "8. No TypeScript. No JSX. Plain HTML + CSS + JS. No framework imports.",
+  "FORMS TO DRAW FROM (combine them, subvert them, don't just copy):",
+  "- Games with feel: snake, breakout, dodger, tower defense, roguelike crawl, rhythm tapper, physics golf, orbital shooter, typing race, idle/clicker with real progression, tiny platformer.",
+  "- Living toys: particle systems, fluid/flocking/reaction-diffusion sims, generative synth or drum sequencer, node-graph patch bay, procedural creature that reacts to you, a garden that grows.",
+  "- Puzzles with a twist: one-screen escape room, cipher, logic grid, maze that rebuilds, light-and-mirror puzzle, hidden-object scene with a story.",
+  "- Worlds & UIs: fake OS with draggable windows and running apps, explorable diorama, retro CRT/Teletext/BBS, a machine you operate (elevator, radio, modem, vending), an interactive map you travel.",
+  "- Generative canvases: WebGL-free shaders faked in canvas, flow fields, kaleidoscopes, ASCII 3D, procedural landscapes you fly over.",
   "",
-  "STYLE:",
-  "- Fonts provided as CSS variables; use them or override in your <style>.",
-  "- Theme colours provided as CSS variables; use them or override.",
-  "- Keep CSS and JS tight. No dead code. No comments describing what the code does.",
-  "- Prefer canvas or inline SVG for graphics. Prefer CSS animations over JS loops when you can.",
+  "CRAFT BAR — what separates ambitious from cheap:",
+  "- MOTION: eased transitions, spring physics, parallax, particles on interaction. Nothing snaps or teleports. Use requestAnimationFrame; interpolate, don't jump.",
+  "- DEPTH: at least 2-3 distinct states or scenes (intro → play → reveal, or menu → world → detail). Reward exploration. Hide something.",
+  "- SOUND when it fits: generate tones/blips with the Web Audio API (oscillators/gain), gated behind a first user gesture, with a mute affordance. Never autoplay loud.",
+  "- ATMOSPHERE: cohesive art direction — grain, glow, vignette, shadows, custom cursors, a title, a mood. Commit to a world.",
+  "- TYPE & COLOR: pair fonts with intent. Use the palette as a real palette (gradients, glows, mix), not flat blocks.",
+  "- DETAIL: micro-interactions, hover states, a loading beat, an ending. The small stuff is the whole game.",
+  "",
+  "EMBED THE PERSON'S DATA AS PART OF THE WORLD (never a contact card):",
+  "  - name = the title, the protagonist, the high-score holder, the OS user, the world's creator.",
+  "  - projects = inventory items, apps on a desktop, planets, rooms, stations on a dial, cards in a deck, levels.",
+  "  - facts = NPC dialogue, oracle readings, lore tooltips, loading tips, collectible secrets, fortune drops.",
+  "  - talks = radio tracks, TV channels, tapes, files on a drive, exhibits.",
+  "  - socials = maze exits, NPCs, contacts in a fake phone, doors, portals.",
+  "  - email = the final reward, the treasure, the secret unlocked at the end.",
+  "Every project URL, social URL, talk URL, and the email must be REACHABLE inside the experience — clickable or selectable. If a user can't reach a real link, you failed.",
+  "",
+  "HARD REQUIREMENTS (any failure = garbage output):",
+  "1. GENUINELY INTERACTIVE and deep — responds to clicks, keys, drags, pointer, scroll, touch, tilt. A static scroll page is an instant fail.",
+  "2. SELF-CONTAINED: no external fetch(), no CDN imports, no loading remote assets, no eval of strings. All art is drawn/generated in code (canvas, SVG, CSS, Web Audio).",
+  "3. Works on BOTH mobile touch and desktop mouse+keyboard. Use pointer events. Provide a touch path for anything keyboard-driven.",
+  "4. STABLE: no infinite loops, no runaway timers. One rAF loop, cancelled on cleanup. Handle resize. Degrade gracefully with no mouse/keyboard/audio.",
+  "5. If you render the profile image, add referrerpolicy=\"no-referrer\" on the <img>.",
+  "6. Plain HTML + CSS + JS only. No TypeScript, no JSX, no frameworks, no modules, no require.",
+  "",
+  "STYLE PLUMBING:",
+  "- Fonts and theme colours arrive as CSS variables (--bg, --surface, --text, --muted, --accent, --accent-alt, --border, --font-body, --font-display). Use them, or override in your <style> if the piece demands it.",
+  "- Pick fonts that fit the world — an arcade piece wants a pixel/mono display face; a dreamy sim wants something elegant.",
+  "- Tight code, no dead code, no explanatory comments.",
   "",
   "YOUR OUTPUT: a single JSON object, exactly these fields:",
   "{",
   "  \"theme_name\": \"a creative name for today's piece\",",
   "  \"primary_font\": \"Google Fonts name for body\",",
-  "  \"display_font\": \"Google Fonts name for headings\",",
+  "  \"display_font\": \"Google Fonts name for headings/display\",",
   "  \"theme\": { \"background\": \"#hex\", \"surface\": \"#hex\", \"text\": \"#hex\", \"muted\": \"#hex\", \"accent\": \"#hex\", \"accent_alt\": \"#hex\", \"border\": \"#hex\" },",
-  "  \"daily_label\": \"a short tagline for today's drop\",",
+  "  \"daily_label\": \"a short evocative tagline for today's drop\",",
   "  \"body_html\": \"the full interactive fragment, including inline <style> and <script> tags\"",
   "}",
   "",
   "BODY_HTML RULES:",
-  "- The fragment gets inserted directly inside <body>. Write <style> and <script> tags in it.",
+  "- Inserted directly inside <body>. Include your own <style> and <script> tags.",
   "- DO NOT include: <!DOCTYPE>, <html>, <head>, <body>, <link>, <meta>, <title>, <base>.",
-  "- CSS vars on :root: --bg, --surface, --text, --muted, --accent, --accent-alt, --border, --font-body, --font-display.",
-  "- All scripts run inline. Wrap your JS in an IIFE. Don't pollute global scope.",
-  "- No module imports, no require, no ES modules syntax.",
+  "- Wrap JS in an IIFE. Don't pollute global scope. No module/import/require syntax.",
+  "- Make it fill the viewport and feel intentional edge to edge.",
   "",
-  "BE BOLD. BE WEIRD. BE SPECIFIC. Don't make a personal site. Make a thing worth sharing.",
+  "BE BOLD. BE WEIRD. BE SPECIFIC. GO BIG. Make the thing people wish they'd built.",
   "",
   "Return valid JSON only, no markdown fences."
 ].join("\n");
@@ -171,12 +179,13 @@ async function generatePage({ apiKey, content, dateSeed, numericSeed }) {
   };
 
   const baseBody = {
-    model: "moonshotai/kimi-k2.6",
+    model: "moonshotai/kimi-k3",
     messages: [
       { role: "system", content: SYSTEM_PROMPT },
       { role: "user", content: JSON.stringify(personPayload) }
     ],
-    temperature: 1.25,
+    temperature: 1.1,
+    max_tokens: 32000,
     seed: numericSeed
   };
 
@@ -188,15 +197,14 @@ async function generatePage({ apiKey, content, dateSeed, numericSeed }) {
       ? { ...baseBody, messages: [...baseBody.messages, { role: "user", content: retryNote }] }
       : baseBody;
 
-    let data;
     try {
-      data = await callOpenRouter(apiKey, { ...requestBody, response_format: { type: "json_object" } });
-    } catch (e) {
-      console.warn(`[generator] JSON mode failed, retrying: ${e.message}`);
-      data = await callOpenRouter(apiKey, requestBody);
-    }
-
-    try {
+      let data;
+      try {
+        data = await callOpenRouter(apiKey, { ...requestBody, response_format: { type: "json_object" } });
+      } catch (e) {
+        console.warn(`[generator] JSON mode failed, retrying without it: ${e.message}`);
+        data = await callOpenRouter(apiKey, requestBody);
+      }
       return normalizeGeneratedDesign({ data, dateSeed });
     } catch (error) {
       lastError = error;

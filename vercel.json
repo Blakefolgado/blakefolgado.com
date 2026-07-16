@@ -3,6 +3,7 @@
   "framework": null,
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
+  "ignoreCommand": "if [ \"$VERCEL_GIT_COMMIT_REF\" = \"main\" ]; then exit 1; fi; if [ \"$VERCEL_GIT_COMMIT_REF\" = \"staging\" ]; then case \"$(git log -1 --pretty=%B)\" in *'[staging-build]'*) exit 1;; esac; fi; exit 0",
   "headers": [
     {
       "source": "/(.*)",
