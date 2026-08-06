@@ -110,12 +110,37 @@ const SYSTEM_PROMPT = [
   "- Generative canvases: WebGL-free shaders faked in canvas, flow fields, kaleidoscopes, ASCII 3D, procedural landscapes you fly over.",
   "",
   "CRAFT BAR — what separates ambitious from cheap:",
-  "- MOTION: eased transitions, spring physics, parallax, particles on interaction. Nothing snaps or teleports. Use requestAnimationFrame; interpolate, don't jump.",
+  "- MOTION: eased transitions, parallax, particles on interaction. Nothing snaps or teleports. Use requestAnimationFrame; interpolate, don't jump.",
   "- DEPTH: at least 2-3 distinct states or scenes (intro → play → reveal, or menu → world → detail). Reward exploration. Hide something.",
   "- SOUND when it fits: generate tones/blips with the Web Audio API (oscillators/gain), gated behind a first user gesture, with a mute affordance. Never autoplay loud.",
   "- ATMOSPHERE: cohesive art direction — grain, glow, vignette, shadows, custom cursors, a title, a mood. Commit to a world.",
   "- TYPE & COLOR: pair fonts with intent. Use the palette as a real palette (gradients, glows, mix), not flat blocks.",
   "- DETAIL: micro-interactions, hover states, a loading beat, an ending. The small stuff is the whole game.",
+  "",
+  "DESIGN DISCIPLINE — ambition without craft is noise. Non-negotiable:",
+  "- NAME YOUR LANE before you build, silently and never in your output. Decide one sentence describing the piece as a physical object (a 1970s terminal manual, a fabric label, a concert poster, a museum diorama, a receipt from a diner). Build THAT. If the sentence could describe a generic 'AI-made interactive site', start over.",
+  "- COLOR STRATEGY, chosen deliberately: committed (one saturated colour carries 30-60% of the surface), full palette (3-4 named roles), or drenched (the surface IS the colour). Timid palettes are invisible. Never a warm near-white cream/sand/beige background — that is the saturated AI default.",
+  "- CONTRAST IS A HARD GATE: body text >=4.5:1 against its background, large/bold text >=3:1. Light grey text 'for elegance' is the single biggest tell of machine-made design. Never grey text on a coloured background — use a darker shade of that background's own hue.",
+  "- TYPE SCALE: modular, >=1.25 ratio between steps, fluid clamp() for display sizes with a max of about 6rem. Display letter-spacing never tighter than -0.04em. Body line length 65-75 characters. Light text on dark needs +0.05-0.1 line-height. Use text-wrap: balance on headings.",
+  "- FONT CHOICE: pick for the world, not by reflex. BANNED (training-data defaults, instant tell): Inter, DM Sans, DM Serif, Space Grotesk, Space Mono, Plus Jakarta Sans, Outfit, Instrument Sans, Instrument Serif, Playfair Display, Cormorant, Fraunces, Newsreader, Lora, Crimson, Syne, IBM Plex. Monospace only when the world is genuinely technical, never as costume.",
+  "- MOTION: ease-out curves (quart/quint/expo), never bounce or elastic. Animate transform/opacity/filter, not layout properties. Honour @media (prefers-reduced-motion: reduce) with a crossfade or instant state — every piece, no exceptions. Content must be visible by default; never gate it behind a reveal transition that may not fire.",
+  "- LAYOUT: vary spacing for rhythm — generous separations, tight groupings. Asymmetry and broken grids are allowed and encouraged. Semantic z-index tiers, never 999. Text must never overflow its container at any viewport, including 375px wide.",
+  "",
+  "BANNED — using any of these is an automatic fail. Rewrite the element with different structure:",
+  "- Gradient text (background-clip: text on a gradient). Gradient FILLS are encouraged; gradient TEXT is banned. One solid colour for type; emphasis via weight or size.",
+  "- Glassmorphism as decoration. Blur and backdrop-filter must earn their place in the world's physics, or be absent.",
+  "- Coloured side-stripe borders (border-left/right > 1px) on cards, callouts or list items.",
+  "- Identical card grids: same-sized icon + heading + text repeated. Scrolling cards are already a fail.",
+  "- Tiny uppercase letter-spaced eyebrow labels above every section, and 01/02/03 numbered section markers used as scaffolding.",
+  "- The hero-metric template: big number, small label, supporting stats, gradient accent.",
+  "- All-caps body copy, and large rounded-corner icons above every heading.",
+  "",
+  "COPY — every word in the piece is designed too:",
+  "- Say exactly what happens. Labels start with a verb and name the real outcome ('Open the vault', not 'Submit'). No 'Click here', no 'Learn more'.",
+  "- Same word for the same thing everywhere. Never rename a concept mid-piece.",
+  "- Instructions must be usable on first read, in the world's voice, and short enough to read while playing.",
+  "- Empty and idle states say what this is, why it's empty, and what to do next. Endings acknowledge what the player did.",
+  "- Cut every word that doesn't help someone act or feel something. Voice can be strange; clarity cannot be optional.",
   "",
   "EMBED THE PERSON'S DATA AS PART OF THE WORLD (never a contact card):",
   "  - name = the title, the protagonist, the high-score holder, the OS user, the world's creator.",
@@ -136,7 +161,7 @@ const SYSTEM_PROMPT = [
   "",
   "STYLE PLUMBING:",
   "- Fonts and theme colours arrive as CSS variables (--bg, --surface, --text, --muted, --accent, --accent-alt, --border, --font-body, --font-display). Use them, or override in your <style> if the piece demands it.",
-  "- Pick fonts that fit the world — an arcade piece wants a pixel/mono display face; a dreamy sim wants something elegant.",
+  "- Pick fonts that fit the world — an arcade piece wants a pixel or heavy display face; a dreamy sim wants something elegant.",
   "- Tight code, no dead code, no explanatory comments.",
   "",
   "YOUR OUTPUT: a single JSON object, exactly these fields:",
@@ -179,7 +204,7 @@ async function generatePage({ apiKey, content, dateSeed, numericSeed }) {
   };
 
   const baseBody = {
-    model: "moonshotai/kimi-k3",
+    model: "deepseek/deepseek-v4-flash-0731",
     messages: [
       { role: "system", content: SYSTEM_PROMPT },
       { role: "user", content: JSON.stringify(personPayload) }
@@ -240,8 +265,8 @@ function str(v) { return typeof v === "string" ? v.replace(/[\r\n\t]+/g, " ").tr
 
 function normalizeGeneratedDesign({ data, dateSeed }) {
   const themeName = str(data.theme_name) || "Daily Drop";
-  const primaryFont = str(data.primary_font) || "Inter";
-  const displayFont = str(data.display_font) || "Space Grotesk";
+  const primaryFont = str(data.primary_font) || "Archivo";
+  const displayFont = str(data.display_font) || "Bricolage Grotesque";
   const fallbackTheme = { background: "#0a0a0f", surface: "#161622", text: "#f0f0f5", muted: "#8888a0", accent: "#5af2c6", accent_alt: "#ff6b9d", border: "#2a2a3a" };
   const theme = {};
   for (const key of Object.keys(fallbackTheme)) {
@@ -322,14 +347,14 @@ function renderSite({ content, dateSeed, design }) {
   <style>
     :root{--bg:${design.theme.background};--surface:${design.theme.surface};--text:${design.theme.text};--muted:${design.theme.muted};--accent:${design.theme.accent};--accent-alt:${design.theme.accent_alt};--border:${design.theme.border};--font-body:"${design.primaryFont}",sans-serif;--font-display:"${design.displayFont}",sans-serif}
     *,*::before,*::after{box-sizing:border-box}html,body{margin:0;padding:0;min-height:100%}body{background:var(--bg);color:var(--text);font-family:var(--font-body);line-height:1.5;overflow-x:hidden}img{max-width:100%}a{color:inherit}
-    .refresh-pill{position:fixed;right:max(.6rem,env(safe-area-inset-right));bottom:max(.6rem,env(safe-area-inset-bottom));z-index:9999;padding:.4rem .7rem;border:1px solid color-mix(in srgb,var(--accent) 24%,var(--border));border-radius:999px;background:rgba(10,10,12,.65);backdrop-filter:blur(14px);pointer-events:none;font-size:.62rem;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;white-space:nowrap;font-family:var(--font-body)}
+    .refresh-pill{position:fixed;right:max(.6rem,env(safe-area-inset-right));bottom:max(.6rem,env(safe-area-inset-bottom));z-index:60;padding:.4rem .7rem;border:1px solid color-mix(in srgb,var(--accent) 24%,var(--border));border-radius:999px;background:var(--surface);pointer-events:none;font-size:.7rem;color:var(--text);letter-spacing:.01em;white-space:nowrap;font-family:var(--font-body)}
     .refresh-pill span{color:var(--text);font-family:var(--font-display)}
     @media(max-width:640px){.refresh-pill{font-size:.55rem;padding:.3rem .55rem}}
   </style>
 </head>
 <body>
 ${design.bodyHtml}
-<div class="refresh-pill">next drop in <span data-role="design-countdown">--</span></div>
+<div class="refresh-pill">New website generates in <span data-role="design-countdown">--</span></div>
 <script id="daily-site-config" type="application/json">${cfg}</script>
 <script>${clientJs()}</script>
 </body>
@@ -349,8 +374,8 @@ function createMockDesign({ dateSeed, numericSeed }) {
   const palette = palettes[numericSeed % palettes.length];
   return {
     themeName: "Mock Letter Toy",
-    primaryFont: "IBM Plex Mono",
-    displayFont: "Space Mono",
+    primaryFont: "Archivo",
+    displayFont: "Bebas Neue",
     theme: palette,
     dailyLabel: "Mock drop",
     bodyHtml: mockBodyHtml(),
