@@ -65,6 +65,12 @@
       "subtitle": "Instantly beautiful product shots",
       "url": "https://magicscreenshots.com",
       "image": "/assets/magicscreenshots.svg"
+    },
+    {
+      "name": "Commit Index",
+      "subtitle": "Public GitHub activity of top tech companies",
+      "url": "https://commitindex.com",
+      "image": "/assets/commitindex.svg"
     }
   ],
   "facts": [
