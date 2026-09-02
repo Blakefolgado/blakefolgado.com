@@ -2,7 +2,7 @@ import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import path from "node:path";
 import process from "node:process";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -316,6 +316,39 @@ function validateBodyHtml(html) {
   if (!/<script\b[^>]*>[\s\S]*?<\/script>/i.test(html) && !/<style\b[^>]*>[\s\S]*?<\/style>/i.test(html)) {
     throw new Error("body_html missing <style> and <script> — must include inline styles and scripts for an interactive piece");
   }
+  assertScriptsParse(html);
+}
+
+// The model has shipped JS that parses as a page but never runs — most recently a
+// "// initial state" comment that swallowed the call kicking the whole piece off,
+// because the newline after it went missing. Syntax-check every inline script here
+// so generatePage's retry loop regenerates instead of publishing a dead page.
+export function assertScriptsParse(html) {
+  // Truncated output is the common failure: the model stops mid-string, so the tag
+  // never closes and every regex below simply skips it. Count the tags first.
+  for (const tag of ["script", "style"]) {
+    const opens = (html.match(new RegExp(`<${tag}\\b`, "gi")) ?? []).length;
+    const closes = (html.match(new RegExp(`</${tag}>`, "gi")) ?? []).length;
+    if (opens !== closes) {
+      throw new Error(`body_html has ${opens} <${tag}> tags but ${closes} closing tags — the output was cut off mid-way`);
+    }
+  }
+
+  const JS_TYPES = new Set(["", "text/javascript", "application/javascript", "module"]);
+  const blocks = [...html.matchAll(/<script([^>]*)>([\s\S]*?)<\/script>/gi)]
+    .filter(([, attrs]) => !/\bsrc=/i.test(attrs) && JS_TYPES.has((attrs.match(/\btype=["']?([^"'\s>]*)/i)?.[1] ?? "").toLowerCase()))
+    .map((m) => m[2]);
+  blocks.forEach((code, i) => {
+    if (!code.trim()) return;
+    try {
+      new Function(code);
+    } catch (error) {
+      throw new Error(`inline <script> #${i + 1} is not valid JavaScript: ${error.message}`);
+    }
+  });
+  if (blocks.some((code) => /\/\/[^\n]*\)[^\n]*$/.test(code.trimEnd()))) {
+    throw new Error("a <script> ends inside a // comment — code was commented out by a missing newline");
+  }
 }
 
 function renderSite({ content, dateSeed, design }) {
@@ -426,4 +459,6 @@ function clientJs() {
   return `(function(){var el=document.getElementById("daily-site-config");if(!el)return;var c=JSON.parse(el.textContent);function nr(now){var n=new Date(Date.UTC(now.getUTCFullYear(),now.getUTCMonth(),now.getUTCDate(),c.refreshScheduleUtc.hour,c.refreshScheduleUtc.minute));if(n<=now)n.setUTCDate(n.getUTCDate()+1);return n}function cd(){var s=Math.max(0,Math.floor((nr(new Date())-new Date())/1000));var e=document.querySelector("[data-role='design-countdown']");if(e){var h=Math.floor(s/3600);var m=Math.floor((s%3600)/60);e.textContent=h>0?h+"h "+m+"m":m>0?m+"m":s+"s"}}function cl(){var t=new Intl.DateTimeFormat("en-GB",{timeZone:c.timezone,hour:"2-digit",minute:"2-digit",hour12:true}).format(new Date()).toLowerCase();document.querySelectorAll("[data-role='local-time']").forEach(function(n){n.textContent=t})}function w(){fetch("https://api.open-meteo.com/v1/forecast?latitude="+c.weather.latitude+"&longitude="+c.weather.longitude+"&current_weather=true").then(function(r){return r.json()}).then(function(d){var t=Math.round(d.current_weather.temperature);var m={0:"Clear",1:"Mostly clear",2:"Partly cloudy",3:"Cloudy",45:"Fog",48:"Fog",51:"Drizzle",53:"Drizzle",55:"Drizzle",61:"Rain",63:"Rain",65:"Rain",71:"Snow",73:"Snow",75:"Snow",80:"Showers",81:"Showers",82:"Showers",95:"Storm",96:"Storm",99:"Storm"};document.querySelectorAll("[data-role='local-weather']").forEach(function(n){n.textContent=(m[d.current_weather.weathercode]||"Weather")+" \\u00b7 "+t+"C"})}).catch(function(){document.querySelectorAll("[data-role='local-weather']").forEach(function(n){n.textContent="Unavailable"})})}cd();cl();w();setInterval(cd,1000);setInterval(cl,1000);setInterval(w,900000)})()`;
 }
 
-main().catch((error) => { console.error(error); process.exitCode = 1; });
+if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().catch((error) => { console.error(error); process.exitCode = 1; });
+}
