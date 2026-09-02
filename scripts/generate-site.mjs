@@ -159,6 +159,7 @@ const SYSTEM_PROMPT = [
   "4. STABLE: no infinite loops, no runaway timers. One rAF loop, cancelled on cleanup. Handle resize. Degrade gracefully with no mouse/keyboard/audio.",
   "5. If you render the profile image, add referrerpolicy=\"no-referrer\" on the <img>.",
   "6. Plain HTML + CSS + JS only. No TypeScript, no JSX, no frameworks, no modules, no require.",
+  "7. NAME AND HINT, ALWAYS VISIBLE ON LOAD \u2014 no exceptions. Before any interaction, with no clicking, hovering, scrolling or waiting, the page must plainly show: (a) the person's name as readable text, and (b) one short sentence telling the visitor exactly what to do first (\"Turn the dial\", \"Drag the map\", \"Type a command\"). Style them to fit the world, but never hide them behind a state, an animation, a reveal or a menu. A visitor landing on an unlabelled screen with no idea whose it is or what to do is an instant fail.",
   "",
   "STYLE PLUMBING:",
   "- Fonts and theme colours arrive as CSS variables (--bg, --surface, --text, --muted, --accent, --accent-alt, --border, --font-body, --font-display). Use them, or override in your <style> if the piece demands it.",
