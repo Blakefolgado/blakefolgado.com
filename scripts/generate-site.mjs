@@ -153,7 +153,8 @@ const SYSTEM_PROMPT = [
   "",
   "HARD REQUIREMENTS (any failure = garbage output):",
   "1. GENUINELY INTERACTIVE and deep — responds to clicks, keys, drags, pointer, scroll, touch, tilt. A static scroll page is an instant fail.",
-  "2. SELF-CONTAINED: no external fetch(), no CDN imports, no loading remote assets, no eval of strings. All art is drawn/generated in code (canvas, SVG, CSS, Web Audio).",
+  "2. SELF-CONTAINED: no external fetch(), no CDN imports, no eval of strings. Every other visual is drawn/generated in code (canvas, SVG, CSS, Web Audio).",
+  "2a. IMAGES YOU MUST USE: the only files you may load are the profile image and each project's `image` path from the payload (same-origin /assets/... files that are already deployed). Every project logo MUST render as a real <img> somewhere reachable in the piece \u2014 an inventory icon, a card face, a sprite, a texture, a poster on a wall. A piece with no project logos is a fail. Never invent or guess an image path; use only the exact strings in the payload.",
   "3. Works on BOTH mobile touch and desktop mouse+keyboard. Use pointer events. Provide a touch path for anything keyboard-driven.",
   "4. STABLE: no infinite loops, no runaway timers. One rAF loop, cancelled on cleanup. Handle resize. Degrade gracefully with no mouse/keyboard/audio.",
   "5. If you render the profile image, add referrerpolicy=\"no-referrer\" on the <img>.",
@@ -204,7 +205,7 @@ async function generatePage({ apiKey, content, dateSeed, numericSeed }) {
   };
 
   const baseBody = {
-    model: "deepseek/deepseek-v4-flash-0731",
+    model: "openrouter/auto",
     messages: [
       { role: "system", content: SYSTEM_PROMPT },
       { role: "user", content: JSON.stringify(personPayload) }
