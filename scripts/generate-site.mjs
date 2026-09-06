@@ -230,7 +230,12 @@ async function generatePage({ apiKey, content, dateSeed, numericSeed }) {
       try {
         data = await callOpenRouter(apiKey, { ...requestBody, response_format: { type: "json_object" } });
       } catch (e) {
-        console.warn(`[generator] JSON mode failed, retrying without it: ${e.message}`);
+        // Only drop json_object when the provider actually rejected the parameter (4xx).
+        // A 5xx, a network blip or a parse failure used to land here too, quietly retrying
+        // with weaker constraints than the request that failed; those belong to the outer
+        // retry loop, which resends with json mode intact plus a corrective note.
+        if (!/^OpenRouter 4\d\d:/.test(e.message)) throw e;
+        console.warn(`[generator] provider rejected JSON mode, retrying without it: ${e.message}`);
         data = await callOpenRouter(apiKey, requestBody);
       }
       return normalizeGeneratedDesign({ data, dateSeed });
