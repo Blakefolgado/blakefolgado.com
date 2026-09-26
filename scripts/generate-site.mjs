@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { Script } from "node:vm";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -180,6 +181,7 @@ const SYSTEM_PROMPT = [
   "- Inserted directly inside <body>. Include your own <style> and <script> tags.",
   "- DO NOT include: <!DOCTYPE>, <html>, <head>, <body>, <link>, <meta>, <title>, <base>.",
   "- Wrap JS in an IIFE. Don't pollute global scope. No module/import/require syntax.",
+  "- Preserve JavaScript newlines and terminate statements with semicolons. Do not use // comments; use /* ... */ if a comment is necessary.",
   "- Make it fill the viewport and feel intentional edge to edge.",
   "",
   "BE CLEAN. BE SIMPLE. BE ELEGANT. One idea, beautifully made, with nothing left in that did not need to be there. When in doubt, remove it.",
@@ -187,7 +189,7 @@ const SYSTEM_PROMPT = [
   "Return valid JSON only, no markdown fences."
 ].join("\n");
 
-async function generatePage({ apiKey, content, dateSeed, numericSeed }) {
+export async function generatePage({ apiKey, content, dateSeed, numericSeed }) {
   const personPayload = {
     date: dateSeed,
     formattedDate: formatHumanDate(dateSeed),
@@ -219,10 +221,20 @@ async function generatePage({ apiKey, content, dateSeed, numericSeed }) {
 
   let retryNote = "";
   let lastError = null;
+  let previousResponse = null;
 
   for (let attempt = 1; attempt <= 3; attempt += 1) {
     const requestBody = retryNote
-      ? { ...baseBody, messages: [...baseBody.messages, { role: "user", content: retryNote }] }
+      ? {
+        ...baseBody,
+        seed: (numericSeed + attempt - 1) >>> 0,
+        temperature: 0.2,
+        messages: [
+          ...baseBody.messages,
+          ...(previousResponse ? [{ role: "assistant", content: JSON.stringify(previousResponse) }] : []),
+          { role: "user", content: retryNote }
+        ]
+      }
       : baseBody;
 
     try {
@@ -238,12 +250,15 @@ async function generatePage({ apiKey, content, dateSeed, numericSeed }) {
         console.warn(`[generator] provider rejected JSON mode, retrying without it: ${e.message}`);
         data = await callOpenRouter(apiKey, requestBody);
       }
+      previousResponse = data;
       return normalizeGeneratedDesign({ data, dateSeed });
     } catch (error) {
       lastError = error;
+      console.warn(`[generator] attempt ${attempt}/3 failed: ${error.message}`);
       retryNote = [
         `Your previous response could not be published because: ${error.message}.`,
-        "Return fresh JSON. body_html must be a complete, working, INTERACTIVE fragment.",
+        "Fix the rejected response above when present, preserving its design. Return the complete corrected JSON object, not a patch.",
+        "body_html must be a complete, working, INTERACTIVE fragment. Preserve newlines and use semicolons between JavaScript statements. Do not use // comments.",
         "Do NOT include <!DOCTYPE>, <html>, <head>, <body>, <link>, <meta>, <title>, or <base> tags.",
         "Include inline <style> and <script>. It must NOT be a scrolling card layout."
       ].join(" ");
@@ -346,9 +361,10 @@ export function assertScriptsParse(html) {
   blocks.forEach((code, i) => {
     if (!code.trim()) return;
     try {
-      new Function(code);
+      new Script(code, { filename: `inline-script-${i + 1}.js` });
     } catch (error) {
-      throw new Error(`inline <script> #${i + 1} is not valid JavaScript: ${error.message}`);
+      const location = error.stack.split("\n").slice(0, 3).join("\n");
+      throw new Error(`inline <script> #${i + 1} is not valid JavaScript: ${error.message}\n${location}`);
     }
   });
   if (blocks.some((code) => /\/\/[^\n]*\)[^\n]*$/.test(code.trimEnd()))) {
