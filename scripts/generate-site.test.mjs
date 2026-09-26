@@ -34,6 +34,8 @@ assertScriptsParse("<style>body{color:red}</style>");
 // Compile as a browser script, without executing generated code.
 throws("<script>return;</script>", "top-level return cannot run in a browser script");
 assertScriptsParse('<script>throw new Error("must never execute");</script>');
+assertScriptsParse('<script>(function(){var link="https://blakefolgado.com";window.open(link);})();</script>');
+assertScriptsParse('<script>(function(){}()); // Finished (intentionally)</script>');
 
 // Reproduce the reported "Unexpected token 'var'" with a missing separator.
 // Repair needs the rejected response and the parser location, not another blind

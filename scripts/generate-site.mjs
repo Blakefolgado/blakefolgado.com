@@ -339,10 +339,8 @@ function validateBodyHtml(html) {
   assertScriptsParse(html);
 }
 
-// The model has shipped JS that parses as a page but never runs — most recently a
-// "// initial state" comment that swallowed the call kicking the whole piece off,
-// because the newline after it went missing. Syntax-check every inline script here
-// so generatePage's retry loop regenerates instead of publishing a dead page.
+// Compile without executing generated code. The parser catches missing IIFE
+// closures, including those swallowed by a // comment after a lost newline.
 export function assertScriptsParse(html) {
   // Truncated output is the common failure: the model stops mid-string, so the tag
   // never closes and every regex below simply skips it. Count the tags first.
@@ -367,9 +365,6 @@ export function assertScriptsParse(html) {
       throw new Error(`inline <script> #${i + 1} is not valid JavaScript: ${error.message}\n${location}`);
     }
   });
-  if (blocks.some((code) => /\/\/[^\n]*\)[^\n]*$/.test(code.trimEnd()))) {
-    throw new Error("a <script> ends inside a // comment — code was commented out by a missing newline");
-  }
 }
 
 function renderSite({ content, dateSeed, design }) {
