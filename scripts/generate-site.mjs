@@ -182,6 +182,7 @@ const SYSTEM_PROMPT = [
   "- DO NOT include: <!DOCTYPE>, <html>, <head>, <body>, <link>, <meta>, <title>, <base>.",
   "- Wrap JS in an IIFE. Don't pollute global scope. No module/import/require syntax.",
   "- Preserve JavaScript newlines and terminate statements with semicolons. Do not use // comments; use /* ... */ if a comment is necessary.",
+  "- Select DOM elements with querySelector, children, or firstElementChild. firstChild and childNodes can return whitespace text nodes, which have no click(), style, or classList. Initialize the interface by calling its update function directly instead of simulating a click.",
   "- Make it fill the viewport and feel intentional edge to edge.",
   "",
   "BE CLEAN. BE SIMPLE. BE ELEGANT. One idea, beautifully made, with nothing left in that did not need to be there. When in doubt, remove it.",
