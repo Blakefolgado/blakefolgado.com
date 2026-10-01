@@ -1,7 +1,7 @@
 // Run: node scripts/generate-site.test.mjs
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import { assertScriptsParse, generatePage } from "./generate-site.mjs";
+import { assertScriptsParse, generatePage, callOpenRouter } from "./generate-site.mjs";
 
 const throws = (html, why) => assert.throws(() => assertScriptsParse(html), undefined, why);
 
@@ -53,7 +53,7 @@ globalThis.fetch = async (_url, options) => {
   return Response.json({ choices: [{ message: { content: JSON.stringify(responses.shift()) } }] });
 };
 console.warn = (message) => warnings.push(message);
-const args = { apiKey: "test-key", content, dateSeed: "2026-09-26", numericSeed: 42 };
+const args = { apiKey: "test-key", content, dateSeed: "2026-09-26", numericSeed: 42, audit: { runId: 'test-run', writeReceipt: async () => {} } };
 try {
   const design = await generatePage(args);
   assert.equal(design.bodyHtml, valid.body_html);
@@ -77,3 +77,42 @@ try {
 }
 
 console.log("ok — invalid scripts receive repair context and cannot be published");
+
+// Provider failures and charged parse failures must remain joinable without storing text.
+const receipts = [];
+const audit = { runId: 'audit-run', dateSeed: '2026-10-01', writeReceipt: async receipt => { receipts.push(receipt); } };
+const requestBody = { model: 'test/model', messages: [{ role: 'user', content: 'private prompt' }] };
+const originalError = console.error;
+try {
+  let request;
+  globalThis.fetch = async (_url, options) => {
+    request = options;
+    return Response.json({ id: 'gen-success', choices: [{ message: { content: '{"ok":true}' } }],
+      usage: { cost: 0, is_byok: true, cost_details: { upstream_inference_cost: 0.02 } } });
+  };
+  assert.deepEqual(await callOpenRouter('test-key', requestBody, audit), { ok: true });
+  assert.equal(request.headers['x-title'], 'blakefolgado.com'); assert.equal(request.headers['x-session-id'], 'audit-run');
+  assert.equal(receipts[0].generation_id, 'gen-success'); assert.equal(receipts[0].billed_cost, 0);
+  assert.equal(receipts[0].byok_upstream_cost, 0.02); assert.equal(JSON.stringify(receipts).includes('private prompt'), false);
+  assert.deepEqual(JSON.parse(request.body), requestBody);
+
+  globalThis.fetch = async () => Response.json({ id: 'gen-error', error: { message: 'failed' }, usage: { cost: 0.01 } }, { status: 503 });
+  await assert.rejects(callOpenRouter('test-key', requestBody, audit), /OpenRouter 503:/);
+  assert.equal(receipts[1].status, 'failed'); assert.equal(receipts[1].generation_id, 'gen-error'); assert.equal(receipts[1].billed_cost, 0.01);
+
+  globalThis.fetch = async () => Response.json({ id: 'gen-invalid', choices: [{ message: { content: 'not JSON' } }],
+    usage: { cost: 0.03, is_byok: false, cost_details: { upstream_inference_cost: 0.02 } } });
+  await assert.rejects(callOpenRouter('test-key', requestBody, audit), /No JSON/);
+  assert.equal(receipts[2].status, 'failed'); assert.equal(receipts[2].billed_cost, 0.03); assert.equal(receipts[2].byok_upstream_cost, null);
+
+  globalThis.fetch = async () => { throw new Error('network failed'); };
+  await assert.rejects(callOpenRouter('test-key', requestBody, audit), /network failed/);
+  assert.equal(receipts[3].status, 'unknown'); assert.equal(receipts[3].billed_cost, null);
+
+  let calls = 0; let storageErrors = 0;
+  console.error = () => { storageErrors++; };
+  globalThis.fetch = async () => { calls++; return Response.json({ id: 'gen-paid', choices: [{ message: { content: '{"ok":true}' } }] }); };
+  assert.deepEqual(await callOpenRouter('test-key', requestBody, { writeReceipt: async () => { throw new Error('disk failed'); } }), { ok: true });
+  assert.equal(calls, 1); assert.equal(storageErrors, 1);
+} finally { globalThis.fetch = originalFetch; console.error = originalError; }
+console.log('ok — provider receipts retain charged failures, distinguish BYOK and cannot cause paid retries');

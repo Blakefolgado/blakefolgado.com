@@ -1,5 +1,6 @@
-import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
-import { createHash } from "node:crypto";
+import { chmod, cp, mkdir, open, readFile, rm, writeFile } from "node:fs/promises";
+import { createHash, randomUUID } from "node:crypto";
+import { homedir } from "node:os";
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -12,6 +13,7 @@ const ROOT = path.resolve(__dirname, "..");
 const CONTENT_PATH = path.join(ROOT, "content", "site-content.json");
 const DEFAULT_OUTPUT_DIR = ROOT;
 const META_PATH = path.join(ROOT, "generated", "site-meta.json");
+const RECEIPT_PATH = path.join(homedir(), ".local", "state", "blakefolgado.com", "openrouter-receipts.jsonl");
 const OG_IMAGE_PATH = path.join(ROOT, "og.png");
 const ASSETS_DIR = path.join(ROOT, "assets");
 
@@ -30,6 +32,7 @@ async function main() {
   const numericSeed = hashStringToInt(dateSeed);
   const outputDir = path.resolve(ROOT, process.env.SITE_OUTPUT_DIR || DEFAULT_OUTPUT_DIR);
   const outputPath = path.join(outputDir, "index.html");
+  const audit = { runId: randomUUID(), dateSeed, receipts: [] };
 
   if (!args.mock && !process.env.OPENROUTER_API_KEY) {
     console.warn("[generator] OPENROUTER_API_KEY not set.");
@@ -39,14 +42,14 @@ async function main() {
 
   const design = args.mock
     ? createMockDesign({ dateSeed, numericSeed })
-    : await generatePage({ apiKey: process.env.OPENROUTER_API_KEY, content, dateSeed, numericSeed });
+    : await generatePage({ apiKey: process.env.OPENROUTER_API_KEY, content, dateSeed, numericSeed, audit });
   const html = renderSite({ content, dateSeed, design });
 
   await mkdir(path.dirname(META_PATH), { recursive: true });
   await prepareOutputDirectory(outputDir);
   await writeFile(outputPath, html, "utf8");
   await copyPublicAssets(outputDir);
-  await writeFile(META_PATH, JSON.stringify({ generatedAt: new Date().toISOString(), dateSeed, themeName: design.themeName }, null, 2) + "\n", "utf8");
+  await writeFile(META_PATH, JSON.stringify({ generatedAt: new Date().toISOString(), dateSeed, themeName: design.themeName, openrouterReceipts: audit.receipts }, null, 2) + "\n", "utf8");
   console.log(`[generator] Wrote ${path.relative(ROOT, outputPath)} (${design.themeName})`);
 }
 
@@ -190,7 +193,8 @@ const SYSTEM_PROMPT = [
   "Return valid JSON only, no markdown fences."
 ].join("\n");
 
-export async function generatePage({ apiKey, content, dateSeed, numericSeed }) {
+export async function generatePage({ apiKey, content, dateSeed, numericSeed, audit }) {
+  audit ??= { runId: randomUUID(), dateSeed, receipts: [] };
   const personPayload = {
     date: dateSeed,
     formattedDate: formatHumanDate(dateSeed),
@@ -241,7 +245,7 @@ export async function generatePage({ apiKey, content, dateSeed, numericSeed }) {
     try {
       let data;
       try {
-        data = await callOpenRouter(apiKey, { ...requestBody, response_format: { type: "json_object" } });
+        data = await callOpenRouter(apiKey, { ...requestBody, response_format: { type: "json_object" } }, audit);
       } catch (e) {
         // Only drop json_object when the provider actually rejected the parameter (4xx).
         // A 5xx, a network blip or a parse failure used to land here too, quietly retrying
@@ -249,7 +253,7 @@ export async function generatePage({ apiKey, content, dateSeed, numericSeed }) {
         // retry loop, which resends with json mode intact plus a corrective note.
         if (!/^OpenRouter 4\d\d:/.test(e.message)) throw e;
         console.warn(`[generator] provider rejected JSON mode, retrying without it: ${e.message}`);
-        data = await callOpenRouter(apiKey, requestBody);
+        data = await callOpenRouter(apiKey, requestBody, audit);
       }
       previousResponse = data;
       return normalizeGeneratedDesign({ data, dateSeed });
@@ -269,20 +273,62 @@ export async function generatePage({ apiKey, content, dateSeed, numericSeed }) {
   throw lastError ?? new Error("Failed to generate a publishable page");
 }
 
-async function callOpenRouter(apiKey, body) {
-  const res = await fetch(OPENROUTER_CHAT_URL, {
-    method: "POST",
-    headers: { authorization: `Bearer ${apiKey}`, "content-type": "application/json", "http-referer": SITE_URL, "x-title": SITE_TITLE },
-    body: JSON.stringify(body)
-  });
-  if (!res.ok) throw new Error(`OpenRouter ${res.status}: ${(await res.text()).slice(0, 400)}`);
-  const raw = (await res.json())?.choices?.[0]?.message?.content;
-  const text = typeof raw === "string" ? raw : Array.isArray(raw) ? raw.map((c) => c?.text ?? c ?? "").join("") : JSON.stringify(raw ?? "");
-  const cleaned = text.trim().replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```$/i, "").trim();
-  const start = cleaned.indexOf("{");
-  const end = cleaned.lastIndexOf("}");
-  if (start < 0 || end <= start) throw new Error("No JSON in response");
-  return JSON.parse(cleaned.slice(start, end + 1));
+async function persistOpenRouterReceipt(receipt) {
+  console.info("[openrouter_receipt] " + JSON.stringify(receipt));
+  await mkdir(path.dirname(RECEIPT_PATH), { recursive: true, mode: 0o700 });
+  await chmod(path.dirname(RECEIPT_PATH), 0o700);
+  const ledger = await open(RECEIPT_PATH, 'a', 0o600);
+  try { await ledger.chmod(0o600); await ledger.write(JSON.stringify(receipt) + "\n"); }
+  finally { await ledger.close(); }
+}
+
+export async function callOpenRouter(apiKey, body, audit = {}) {
+  const requestId = randomUUID();
+  const receipt = {
+    request_id: requestId, generation_id: null, app: SITE_TITLE, feature: "daily_site_generation",
+    run_id: audit.runId ?? requestId, date_seed: audit.dateSeed ?? null,
+    runtime: process.env.VERCEL_ENV ?? process.env.NODE_ENV ?? "local",
+    deployment_url: process.env.VERCEL_URL ?? null, release_sha: process.env.VERCEL_GIT_COMMIT_SHA ?? null,
+    model: body.model ?? null, status: "unknown", billed_cost: null, upstream_inference_cost: null,
+    is_byok: null, byok_upstream_cost: null,
+  };
+  const capture = (data) => {
+    receipt.generation_id = typeof data?.id === "string" ? data.id : null;
+    if (typeof data?.model === "string") receipt.model = data.model;
+    if (typeof data?.usage?.cost === "number") receipt.billed_cost = data.usage.cost;
+    if (typeof data?.usage?.is_byok === "boolean") receipt.is_byok = data.usage.is_byok;
+    if (typeof data?.usage?.cost_details?.upstream_inference_cost === "number") receipt.upstream_inference_cost = data.usage.cost_details.upstream_inference_cost;
+    receipt.byok_upstream_cost = receipt.is_byok === true ? receipt.upstream_inference_cost : null;
+    receipt.status = data?.error || data?.choices?.[0]?.finish_reason === "error" ? "failed" : "success";
+  };
+  try {
+    const res = await fetch(OPENROUTER_CHAT_URL, {
+      method: "POST",
+      headers: { authorization: `Bearer ${apiKey}`, "content-type": "application/json", "http-referer": SITE_URL, "x-title": SITE_TITLE, "x-session-id": receipt.run_id },
+      body: JSON.stringify(body)
+    });
+    if (!res.ok) {
+      const errorText = await res.text();
+      try { capture(JSON.parse(errorText)); } catch { /* HTTP failures may have no usage metadata. */ }
+      receipt.status = "failed";
+      throw new Error(`OpenRouter ${res.status}: ${errorText.slice(0, 400)}`);
+    }
+    const data = await res.json(); capture(data);
+    const raw = data?.choices?.[0]?.message?.content;
+    const text = typeof raw === "string" ? raw : Array.isArray(raw) ? raw.map((c) => c?.text ?? c ?? "").join("") : JSON.stringify(raw ?? "");
+    const cleaned = text.trim().replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```$/i, "").trim();
+    const start = cleaned.indexOf("{");
+    const end = cleaned.lastIndexOf("}");
+    if (start < 0 || end <= start) throw new Error("No JSON in response");
+    return JSON.parse(cleaned.slice(start, end + 1));
+  } catch (error) {
+    if (receipt.status === "success") receipt.status = "failed";
+    throw error;
+  } finally {
+    audit.receipts?.push(receipt);
+    try { await (audit.writeReceipt ?? persistOpenRouterReceipt)(receipt); }
+    catch { console.error("OpenRouter receipt persistence failed", { request_id: requestId, generation_id: receipt.generation_id }); }
+  }
 }
 
 function str(v) { return typeof v === "string" ? v.replace(/[\r\n\t]+/g, " ").trim().slice(0, 80) : ""; }
