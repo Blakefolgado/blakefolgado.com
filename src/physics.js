@@ -47,6 +47,15 @@ export function keepInView(body, target, bounds) {
   target.x = clampX(target.x); target.y = clampY(target.y);
 }
 
+// Move the view with keyboard travel before the visible edge clips the character.
+export function keyboardPan(body, direction, bounds, dt, height) {
+  if (!bounds || !direction) return 0;
+  const edge = direction > 0 ? bounds.bottom - body.y : body.y - bounds.top;
+  const room = direction > 0 ? height - 44 - bounds.bottom : bounds.top - 44;
+  if (edge > 60 || room <= 0) return 0;
+  return Math.sign(direction) * Math.min(room, Math.max(120, body.vy * Math.sign(direction)) * Math.min(dt, 1 / 30));
+}
+
 export function wanderTarget(body, bounds, landmarks, random = Math.random) {
   const visible = landmarks.filter(p => p.y > bounds.top + 80 && p.y < bounds.bottom - 70);
   const visit = visible.length && random() < .55 ? visible[Math.floor(random() * visible.length)] : null;

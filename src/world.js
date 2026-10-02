@@ -1,5 +1,5 @@
 import * as THREE from '../vendor/three.module.js';
-import { walk, layout, gaze, seaSurface, visibleBounds, keepInView, wanderTarget } from './physics.js';
+import { walk, layout, gaze, seaSurface, visibleBounds, keepInView, keyboardPan, wanderTarget } from './physics.js';
 import { makeScenery } from './scenery.js';
 import { marineSprites, stepMarine, knockSurfer } from './ocean.js';
 import { createMatrix, stepMatrix, strikePixels, neoPixels, agentPixels, BULLET_LIMIT } from './matrix.js';
@@ -18,6 +18,7 @@ export async function createGarden(canvas, projects, callbacks) {
   let hero, trail, ring, sea, scenery, sky, bottles = [], active = false, frame = 0, last = 0, elapsed = 0;
   const seed = Math.random() * 1000;
   let pointer, pointerClient;
+  let keyboardScrollY = null, keyboardDirection = 0;
   let destination = null;
   let seaTap, marine = [], ripples = [], lastRipple = 0, previousPointer;
   let controlledAt = 0, wanderAt = 5, wandering = false;
@@ -119,6 +120,7 @@ export async function createGarden(canvas, projects, callbacks) {
     }
   }
   function go(x,y, chosen = null) {
+    keyboardDirection=0;
     controlledAt=elapsed;wandering=false;wanderAt=elapsed+5;
     moved = true;
     destination = chosen;
@@ -131,7 +133,7 @@ export async function createGarden(canvas, projects, callbacks) {
   }
   function stopWalking() {
     controlledAt=elapsed;wandering=false;wanderAt=elapsed+5;
-    dragging=false;keys.clear();bulletTime=false;slowUntil=0;dodgeUntil=0;moved=false;destination={bottle:1};
+    dragging=false;keys.clear();keyboardDirection=0;bulletTime=false;slowUntil=0;dodgeUntil=0;moved=false;destination={bottle:1};
     target.x=body.x;target.y=body.y;body.vx=body.vy=0;
   }
   function splash(x,y,strength=8) {
@@ -254,6 +256,21 @@ export async function createGarden(canvas, projects, callbacks) {
     target.y=Math.max(35,Math.min(height-40,body.y+dy/length*70));
     return {dx,dy};
   }
+  function followKeyboard(direction,dt) {
+    const bounds=visibleBounds(canvas.getBoundingClientRect(),{width:innerWidth,height:innerHeight});
+    const amount=keyboardPan(body,direction,bounds,dt,height);
+    const next=Math.max(0,Math.min(document.documentElement.scrollHeight-innerHeight,scrollY+amount));
+    if(Math.abs(next-scrollY)<.1)return false;
+    keyboardScrollY=next;
+    window.scrollTo({top:next,behavior:'instant'});
+    return true;
+  }
+  function confine(bounds) {
+    const travelY=target.y;
+    keepInView(body,target,bounds);
+    // A released key still has momentum and a destination beyond the old viewport.
+    if(keyboardDirection)target.y=travelY;
+  }
   function bulletImpact(shot, cloud, pos, index) {
     if(shot.hits&(1<<index))return;
     // Broad phase keeps the dense lettering out of the per-bullet work unless crossed.
@@ -318,11 +335,11 @@ export async function createGarden(canvas, projects, callbacks) {
     });
   }
   function update(dt) {
-    const rect=canvas.getBoundingClientRect();
-    const bounds=visibleBounds(rect,{width:window.innerWidth,height:window.innerHeight});
+    let rect=canvas.getBoundingClientRect();
+    let bounds=visibleBounds(rect,{width:window.innerWidth,height:window.innerHeight});
     if(pointerClient)pointer={x:pointerClient.clientX-rect.left,y:pointerClient.clientY-rect.top};
     elapsed+=dt;
-    if(bounds)keepInView(body,target,bounds);
+    if(bounds)confine(bounds);
     const hovered=pointer&&Math.abs(pointer.x-body.x)<45&&Math.abs(pointer.y-body.y)<43;
     if(dragging||keys.size||bulletTime||elapsed<dodgeUntil||dialog.open||hovered){
       controlledAt=elapsed;
@@ -333,15 +350,21 @@ export async function createGarden(canvas, projects, callbacks) {
       if(wandering&&settled){wandering=false;wanderAt=elapsed+1.2+Math.random()*2;}
       if(!wandering&&(!moved||settled)&&elapsed>=wanderAt){
         const next=wanderTarget(body,bounds,positions);
-        target.x=next.x;target.y=next.y;wandering=true;moved=false;destination=null;
+        target.x=next.x;target.y=next.y;wandering=true;keyboardDirection=0;moved=false;destination=null;
       }
     }
     if(keys.size){
       const {dx,dy}=steer();
+      keyboardDirection=dy;
       if(reduced){body.x+=dx*3;body.y+=dy*3;}
     }
     if(!reduced&&bounds)walk(body,target,dt,width,height,wandering?100:390);
-    if(bounds)keepInView(body,target,bounds);
+    if(keyboardDirection&&followKeyboard(keyboardDirection,dt)){
+      rect=canvas.getBoundingClientRect();bounds=visibleBounds(rect,{width:innerWidth,height:innerHeight});
+      if(pointerClient)pointer={x:pointerClient.clientX-rect.left,y:pointerClient.clientY-rect.top};
+    }
+    if(bounds)confine(bounds);
+    if(!keys.size&&Math.abs(target.y-body.y)<1&&Math.abs(body.vy)<10)keyboardDirection=0;
     const speed=Math.hypot(body.vx,body.vy);
     const slow=bulletTime||elapsed<slowUntil;
     const shooting=!reduced&&bounds&&!dialog.open;
@@ -486,13 +509,15 @@ export async function createGarden(canvas, projects, callbacks) {
   function renderOnce(){update(1/60);renderer.render(scene,camera);}
   function animate(now){if(!active)return;const dt=Math.min((now-last)/1000||1/60,1/30);last=now;update(dt);renderer.render(scene,camera);frame=requestAnimationFrame(animate);}
   function setActive(value){
-    active=value;cancelAnimationFrame(frame);keys.clear();bulletTime=false;slowUntil=0;dodgeUntil=0;dragging=false;seaTap=undefined;
+    active=value;cancelAnimationFrame(frame);keys.clear();keyboardDirection=0;bulletTime=false;slowUntil=0;dodgeUntil=0;dragging=false;seaTap=undefined;
     if(value){if(width!==canvas.clientWidth||height!==canvas.clientHeight)build();last=performance.now();if(reduced)renderOnce();else frame=requestAnimationFrame(animate);}
   }
   function coords(event){const rect=canvas.getBoundingClientRect();return{x:event.clientX-rect.left,y:event.clientY-rect.top};}
   document.addEventListener('pointermove',event=>{if(event.pointerType==='mouse'){pointerClient={clientX:event.clientX,clientY:event.clientY};if(reduced)renderOnce();}});
   document.addEventListener('pointerleave',()=>{pointer=pointerClient=undefined;});
   window.addEventListener('scroll',()=>{
+    if(keyboardScrollY!==null&&Math.abs(scrollY-keyboardScrollY)<2){keyboardScrollY=null;return;}
+    keyboardScrollY=null;
     stopWalking();
     if(reduced)renderOnce();
   },{passive:true});
@@ -538,7 +563,12 @@ export async function createGarden(canvas, projects, callbacks) {
       return;
     }
     if(!['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','w','a','s','d'].includes(key))return;
-    event.preventDefault();controlledAt=elapsed;wandering=false;keys.add(key);moved=true;destination=null;steer();
+    const bounds=visibleBounds(canvas.getBoundingClientRect(),{width:innerWidth,height:innerHeight});
+    if(!bounds)return;
+    // At the actual ends of the map, arrows return to ordinary page scrolling.
+    if((key==='ArrowDown'&&bounds.bottom>=height-44&&body.y>=bounds.bottom-2)||(key==='ArrowUp'&&bounds.top<=44&&body.y<=bounds.top+2)){keys.delete(key);return;}
+    event.preventDefault();controlledAt=elapsed;wandering=false;keys.add(key);moved=true;destination=null;
+    const {dy}=steer();keyboardDirection=dy;followKeyboard(dy,1/60);
     if(!event.repeat)callbacks.step();if(reduced)renderOnce();
   });
   document.addEventListener('keyup',(event)=>{

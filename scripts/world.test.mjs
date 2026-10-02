@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { walk, layout, gaze, visibleBounds, keepInView, wanderTarget } from '../src/physics.js';
+import { walk, layout, gaze, visibleBounds, keepInView, keyboardPan, wanderTarget } from '../src/physics.js';
 import { marineSprites, stepMarine } from '../src/ocean.js';
 
 test('walking has momentum, settles at its destination, and remains inside the garden', () => {
@@ -84,4 +84,49 @@ test('idle strolls stay in the current viewport and use a gentler walking speed'
     assert.ok(Math.hypot(body.vx,body.vy)<=100.001,'autonomous movement stays calm');
   }
   assert.ok(Math.hypot(body.x-target.x,body.y-target.y)<1);
+});
+
+test('keyboard travel carries the view through the map instead of pinning Neo at its visible edge', () => {
+  const height=1530,viewport={width:390,height:640};
+  const rect={left:16,top:-200,width:358,height};
+  const body={x:120,y:780,vx:0,vy:0},target={x:120,y:780};
+  const startY=body.y;
+  for(let i=0;i<180;i++){
+    let bounds=visibleBounds(rect,viewport);
+    keepInView(body,target,bounds);target.y=body.y+70;
+    walk(body,target,1/60,358,height);
+    rect.top-=keyboardPan(body,1,bounds,1/60,height);
+    bounds=visibleBounds(rect,viewport);keepInView(body,target,bounds);
+    assert.ok(body.y+rect.top<=596,'keyboard scrolling keeps the entire sprite on screen');
+  }
+  assert.ok(body.y>startY+400,'holding Down advances through the world');
+  assert.ok(rect.top<-600,'the view travels with Neo');
+  const downY=body.y;
+  for(let i=0;i<180;i++){
+    let bounds=visibleBounds(rect,viewport);
+    keepInView(body,target,bounds);target.y=body.y-70;
+    walk(body,target,1/60,358,height);
+    rect.top-=keyboardPan(body,-1,bounds,1/60,height);
+    bounds=visibleBounds(rect,viewport);keepInView(body,target,bounds);
+    assert.ok(body.y+rect.top>=44,'Up also retains room for his head');
+  }
+  assert.ok(body.y<downY-400,'Up can reverse the journey');
+  assert.equal(keyboardPan(body,0,visibleBounds(rect,viewport),1/60,height),0,'horizontal movement cannot scroll the page');
+  assert.equal(keyboardPan({y:height-44,vy:300},1,{bottom:height-44},1/60,height),0,'the camera stops at the real end of the world');
+  assert.equal(keyboardPan(body,1,null,1/60,height),0,'an off-screen world does not pull the page back');
+});
+
+test('a single Down tap keeps its destination when the old viewport ends', () => {
+  const rect={left:16,top:-200,width:358,height:1530},viewport={width:390,height:640};
+  const body={x:120,y:796,vx:0,vy:0},target={x:120,y:866};
+  for(let i=0;i<180;i++){
+    const destination=target.y;
+    keepInView(body,target,visibleBounds(rect,viewport));target.y=destination;
+    walk(body,target,1/60,358,1530);
+    rect.top-=keyboardPan(body,1,visibleBounds(rect,viewport),1/60,1530);
+    keepInView(body,target,visibleBounds(rect,viewport));target.y=destination;
+  }
+  assert.ok(Math.abs(body.y-866)<1,'releasing Down must not cut a short step off at the old edge');
+  assert.ok(rect.top<-260,'the view follows the short step');
+  assert.ok(body.y+rect.top<=596,'Neo remains visible after the tap');
 });
