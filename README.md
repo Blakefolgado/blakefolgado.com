@@ -17,7 +17,7 @@ Open http://localhost:4173. Rebuild after editing. The server serves `dist` plus
 
 `index.html` owns the biography, project order, short hooks, writing and talk links. JavaScript reads its semantic project list, so the fallback and game share the same content. `src/physics.js` controls movement, bounded eye tracking and the seeded layout. `src/world.js` draws the sky, scenery, robot and sea. Clicking a project walks to an actual pixel in its label; touching it opens its website in a new tab. Travel to a chosen project or bottle does not activate unrelated projects along the way. Free walking still activates things on contact. Ctrl/Cmd-click retains ordinary browser link behavior. Mouse, touch, arrows and WASD are supported. Page scrolling explores the full world.
 
-The article comes from HumanLeap’s published guide credited to Blake; the two talk links and previous roles come from the repository’s existing content. The former `content/site-content.json` remains historical source material and is not used at runtime. The photo favicon is preserved.
+The two talk links and previous roles come from the repository’s existing content. The former `content/site-content.json` remains historical source material and is not used at runtime. The photo favicon is preserved.
 
 ## Bottles, visitors and free AI
 
