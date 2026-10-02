@@ -136,7 +136,7 @@ export async function createGarden(canvas, projects, callbacks) {
       const glints=[[-43,-79],[44,-54],[30,-108]].map(([x,y],i)=>({x:x*scale,y:y*scale,color:project.color,size:i?2:3,opacity:.35,glint:i+1}));
       const title=sample((ctx)=>{
         ctx.fillStyle=project.color;
-        ctx.font=`400 ${index===5?25:30}px "Geist Pixel"`;ctx.textAlign='center';ctx.fillText(project.name,160,110);
+        ctx.font=`400 ${project.name==='MagicScreenshots'?25:30}px "Geist Pixel"`;ctx.textAlign='center';ctx.fillText(project.name,160,110);
       },scale).map(p=>({...p,title:true}));
       const caption=sample((ctx)=>{
         ctx.fillStyle='#596856';ctx.font='400 16px "Geist Pixel"';

@@ -25,7 +25,7 @@ test('random worlds preserve priority and keep all seven project labels apart an
     assert.notDeepEqual(layout(width,height,42),positions,'another visitor gets a different world');
   }
   const html=await readFile('index.html','utf8');
-  assert.deepEqual([...html.matchAll(/<strong>(.*?)<\/strong>/g)].map(m=>m[1]),['Tradehand','ToolRouter','Outside','SentryDock','bot.store','MagicScreenshots','HumanLeap']);
+  assert.deepEqual([...html.matchAll(/<strong>(.*?)<\/strong>/g)].map(m=>m[1]),['Tradehand','ToolRouter','Outside','SentryDock','HumanLeap','bot.store','MagicScreenshots']);
   assert.ok(!JSON.parse(await readFile('vercel.json','utf8')).crons);
   const packageJson=JSON.parse(await readFile('package.json','utf8'));
   assert.ok(!packageJson.scripts.build.includes('generate'));
