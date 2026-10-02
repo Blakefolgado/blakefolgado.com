@@ -1,6 +1,6 @@
 # Blake’s pixel world
 
-A Three.js personal website with a different winding sky on each visit. The priority order stays Tradehand, ToolRouter, Outside, HumanLeap, SentryDock, bot.store, then MagicScreenshots. Each project has its actual app logo rendered as coarse pixel particles, with finer half-pixel lettering sampled at twice the resolution. Logos tilt gently, titles ripple under the cursor, and the particles scatter on contact and spring back together. The robot walks with momentum and its eyes follow the mouse. The sky ends in mountains, hills and an interactive shoreline; writing, talks and previous work sit below.
+A Three.js personal website with a different winding sky on each visit. The priority order stays Tradehand, ToolRouter, Outside, HumanLeap, SentryDock, bot.store, then MagicScreenshots. Each project has its actual app logo rendered as coarse pixel particles, with finer half-pixel lettering sampled at twice the resolution. Logos tilt gently, titles ripple under the cursor, and the particles scatter on contact and spring back together. The Neo character walks with momentum, looks towards the mouse and bends backwards on hover. The sky ends in mountains, hills and an interactive shoreline; writing, talks and previous work sit below.
 
 ## Develop
 
@@ -15,7 +15,9 @@ Open http://localhost:4173. Rebuild after editing. The server serves `dist` plus
 
 ## Content and navigation
 
-`index.html` owns the biography, project order, short hooks, writing and talk links. JavaScript reads its semantic project list, so the fallback and game share the same content. `src/physics.js` controls movement, bounded eye tracking and the seeded layout. `src/world.js` draws the sky, scenery, robot and sea. Moving the mouse over project lettering or logos pushes the nearby pixels apart; they spring back when the cursor leaves. Hovering never activates a link. Clicking a project walks to an actual pixel in its label; character contact opens its website in a new tab. Travel to a chosen project or bottle does not activate unrelated projects along the way. Free walking still activates things on contact. Ctrl/Cmd-click retains ordinary browser link behavior. Mouse, touch, arrows and WASD are supported. Page scrolling explores the full world.
+`index.html` owns the biography, project order, short hooks, writing and talk links. JavaScript reads its semantic project list, so the fallback and game share the same content. `src/physics.js` controls movement, bounded eye tracking, the seeded layout and the shared shoreline boundary. `src/world.js` draws the world; `src/scenery.js` supplies the landscape and sky sprites, and `src/ocean.js` supplies boats, fish and the surfer. Moving the mouse over project lettering or logos pushes the nearby pixels apart; they spring back when the cursor leaves. Hovering never activates a link. Clicking a project walks to an actual pixel in its label; character contact opens its website in a new tab. Travel to a chosen project does not activate unrelated projects along the way. Free walking still activates things on contact. Ctrl/Cmd-click retains ordinary browser link behavior. Mouse, touch, arrows and WASD are supported. Page scrolling explores the full world.
+
+Tapping the sea opens the bottle composer immediately and cancels the current walk, so it cannot open a project crossed on the way to the water. Touch scrolling cancels the tap. Bottle buttons also open their dialogs directly. Mouse movement sends ripples through the water, fish dart away, and boats drift and bob. Hovering or tapping the surfer knocks the rider off the board with a splash; the rider recovers after a few seconds and a parked cursor cannot repeatedly topple them. Reduced motion keeps the ocean creatures still.
 
 The two talk links and previous roles come from the repository’s existing content. The former `content/site-content.json` remains historical source material and is not used at runtime. The photo favicon is preserved.
 
@@ -43,6 +45,6 @@ Vercel builds with `pnpm build` and serves `dist` plus the API. This branch remo
 
 ## Checks
 
-`pnpm test` covers momentum and bounds, priority-preserving random layouts, eye bounds, note retention and idempotency, visitor expiration, shared abuse limits, concurrent local saves and the prohibition on paid model fallbacks. Browser checks cover mobile width, rendering, arrivals, new-tab navigation and the shoreline dialogs. A successful local free-model response has been observed. Cloud database behavior remains unverified until provisioning is complete.
+`pnpm test` covers momentum and bounds, priority-preserving random layouts, eye bounds, surfer recovery, note retention and idempotency, visitor expiration, shared abuse limits, concurrent local saves and the prohibition on paid model fallbacks. Browser checks cover mobile width, rendering, arrivals, new-tab navigation and the shoreline dialogs. A successful local free-model response has been observed. Cloud database behavior remains unverified until provisioning is complete.
 
 Geist Pixel Square is pinned from `vercel/geist-pixel-font` commit `bd5f6cca54c0b179115d8a3fd89385db607034c2`; its SIL Open Font License is included in `assets/fonts/`.

@@ -1,6 +1,7 @@
 import * as THREE from '../vendor/three.module.js';
-import { walk, layout, gaze } from './physics.js';
+import { walk, layout, gaze, seaSurface } from './physics.js';
 import { makeScenery } from './scenery.js';
+import { marineSprites, stepMarine, knockSurfer } from './ocean.js';
 
 export async function createGarden(canvas, projects, callbacks) {
   const logos = await Promise.all(projects.map(async project => {
@@ -17,6 +18,7 @@ export async function createGarden(canvas, projects, callbacks) {
   const seed = Math.random() * 1000;
   let pointer, pointerClient;
   let destination = null;
+  let seaTap, marine = [], ripples = [], lastRipple = 0, previousPointer;
   const visitors = new Map();
   let bottleNearby = -1;
   let reduced = callbacks.reduced, dragging = false, moved = false, nearby = -1;
@@ -94,8 +96,7 @@ export async function createGarden(canvas, projects, callbacks) {
     const button = document.createElement('button');
     button.type = 'button'; button.className = 'bottle'; button.setAttribute('aria-label', label);
     button.addEventListener('click', () => {
-      if(bottleNearby===index)callbacks.bottle?.(index);
-      else go(width * (index ? .66 : .34), height - 65, { bottle: index });
+      stopWalking(); callbacks.bottle?.(index);
     });
     document.getElementById('portals').append(button);
     return button;
@@ -119,6 +120,15 @@ export async function createGarden(canvas, projects, callbacks) {
     if(reduced){body.x=target.x;body.y=target.y;body.vx=body.vy=0;}
     callbacks.step();
     if(reduced) renderOnce();
+  }
+  function stopWalking() {
+    dragging=false;keys.clear();moved=false;destination={bottle:1};
+    target.x=body.x;target.y=body.y;body.vx=body.vy=0;
+  }
+  function splash(x,y,strength=8) {
+    if(reduced)return;
+    ripples.push({x,y,at:elapsed,strength});
+    if(ripples.length>5)ripples.shift();
   }
   function build() {
     width = canvas.clientWidth; height = canvas.clientHeight;
@@ -188,12 +198,14 @@ export async function createGarden(canvas, projects, callbacks) {
       ring=dots(circle);ring.userData.life=0;
     }
     remove(sea); bottles.forEach(remove);
+    marine.forEach(creature=>remove(creature.object));ripples=[];previousPointer=undefined;
     remove(scenery); remove(sky);
     const {land,sky:skyPixels,water}=makeScenery(width,height,positions,seed);
     scenery=dots(land);
     sky=dots(skyPixels,true);
     sky.userData={home:skyPixels,velocity:new Float32Array(skyPixels.length*2)};
     sea=dots(water,true);sea.userData.home=water;
+    marine=marineSprites(width,height).map(creature=>({...creature,object:dots(creature.home,true)}));
     const bottleShape=['  cc  ','  gg  ',' gggg ','gpwwpg','gpwwpg','gpwwpg',' gggg '];
     bottles=[0,1].map(index=>{
       const pixels=[];
@@ -256,6 +268,12 @@ export async function createGarden(canvas, projects, callbacks) {
     hero.position.set(body.x,body.y+bob,0);
     const waterPositions=sea.geometry.attributes.position, waterOpacity=sea.geometry.attributes.opacity;
     const time=reduced?0:elapsed;
+    ripples=ripples.filter(r=>elapsed-r.at<2.4);
+    if(pointer&&pointer.y>=seaSurface(pointer.x,height,time)) {
+      const distance=previousPointer?Math.hypot(pointer.x-previousPointer.x,pointer.y-previousPointer.y):0;
+      if(distance>3&&elapsed-lastRipple>.07){splash(pointer.x,pointer.y,Math.min(12,4+distance*.2));lastRipple=elapsed;}
+    }
+    previousPointer=pointer?{...pointer}:undefined;
     const skyPosition=sky.geometry.attributes.position,skyOpacity=sky.geometry.attributes.opacity;
     sky.userData.home.forEach((p,i)=>{
       const hx=p.x+(reduced||p.star?0:Math.sin(time*.45+p.phase)*5);
@@ -281,14 +299,33 @@ export async function createGarden(canvas, projects, callbacks) {
     });
     skyPosition.needsUpdate=skyOpacity.needsUpdate=true;
     sea.userData.home.forEach((p,i)=>{
-      const edge=height-124+Math.sin(p.x*.017+time*.8)*5+Math.sin(p.x*.037-time*.55)*3;
+      const edge=seaSurface(p.x,height,time);
       const depth=p.y-edge;
       const ripple=Math.sin(p.x*.018+depth*.2-time*1.6);
       const wake=Math.max(0,1-Math.hypot(p.x-body.x,(p.y-body.y)*1.5)/65)*Math.min(speed/130,1);
-      waterPositions.array[i*3+1]=p.y+(reduced?0:Math.sin(p.x*.025+time)*1.3)+wake*Math.sin(depth*.2-time*6)*4;
-      waterOpacity.array[i]=depth<0?0:depth<5?.9:(.5+Math.max(0,ripple)*.3+Math.max(0,wake)*.18)*Math.min(1,(height-p.y)/22);
+      let disturbance=0;
+      for(const wave of ripples){
+        const age=elapsed-wave.at,distance=Math.hypot(p.x-wave.x,(p.y-wave.y)*1.5),front=distance-age*90;
+        disturbance+=Math.sin(front*.14)*Math.exp(-Math.abs(front)*.035-age*1.4)*wave.strength;
+      }
+      const cursor=pointer?Math.max(0,1-Math.hypot(p.x-pointer.x,(p.y-pointer.y)*1.4)/65):0;
+      waterPositions.array[i*3+1]=p.y+(reduced?0:Math.sin(p.x*.025+time)*1.3+disturbance+cursor*Math.sin(p.x*.09-time*3)*3)+wake*Math.sin(depth*.2-time*6)*4;
+      waterOpacity.array[i]=depth<0?0:depth<5?.9:(.5+Math.max(0,ripple)*.3+Math.max(0,wake)*.18+Math.abs(disturbance)*.018)*Math.min(1,(height-p.y)/22);
     });
     waterPositions.needsUpdate=waterOpacity.needsUpdate=true;
+    marine.forEach(creature=>{
+      const pose=stepMarine(creature,dt,time,width,height,pointer,body,reduced);
+      if(pose.knocked)splash(pose.x,pose.y,14);
+      const object=creature.object;
+      object.position.set(pose.x,pose.y,0);object.rotation.z=pose.rotation;object.scale.x=pose.direction;
+      if(creature.kind==='surfer'){
+        const attr=object.geometry.attributes.position,angle=pose.fall*creature.side*1.65;
+        creature.home.forEach((p,i)=>{
+          attr.array[i*3]=p.rider?p.x*Math.cos(angle)-p.y*Math.sin(angle):p.x;
+          attr.array[i*3+1]=p.rider?p.x*Math.sin(angle)+p.y*Math.cos(angle)+pose.fall*7:p.y;
+        });attr.needsUpdate=true;
+      }
+    });
     let nearBottle=-1;
     bottles.forEach((bottle,index)=>{
       const x=width*(index?.66:.34),y=height-65;
@@ -363,16 +400,34 @@ export async function createGarden(canvas, projects, callbacks) {
   function renderOnce(){update(1/60);renderer.render(scene,camera);}
   function animate(now){if(!active)return;const dt=Math.min((now-last)/1000||1/60,1/30);last=now;update(dt);renderer.render(scene,camera);frame=requestAnimationFrame(animate);}
   function setActive(value){
-    active=value;cancelAnimationFrame(frame);keys.clear();dragging=false;
+    active=value;cancelAnimationFrame(frame);keys.clear();dragging=false;seaTap=undefined;
     if(value){if(width!==canvas.clientWidth||height!==canvas.clientHeight)build();last=performance.now();if(reduced)renderOnce();else frame=requestAnimationFrame(animate);}
   }
   function coords(event){const rect=canvas.getBoundingClientRect();return{x:event.clientX-rect.left,y:event.clientY-rect.top};}
   document.addEventListener('pointermove',event=>{if(event.pointerType==='mouse'){pointerClient={clientX:event.clientX,clientY:event.clientY};if(reduced)renderOnce();}});
   document.addEventListener('pointerleave',()=>{pointer=pointerClient=undefined;});
-  canvas.addEventListener('pointerdown',(event)=>{if(event.button!==0)return;dragging=true;const p=coords(event);go(p.x,p.y);if(event.pointerType==='mouse')canvas.setPointerCapture(event.pointerId);});
+  canvas.addEventListener('pointerdown',(event)=>{
+    if(event.button!==0)return;
+    seaTap=undefined;
+    const p=coords(event);
+    if(p.y>=seaSurface(p.x,height,reduced?0:elapsed)){
+      stopWalking();splash(p.x,p.y,13);
+      const surfer=marine.find(c=>c.kind==='surfer'&&Math.hypot(p.x-c.x,p.y-c.y+10)<27);
+      if(surfer){if(knockSurfer(surfer,elapsed,p.x<surfer.x?1:-1))callbacks.step();return;}
+      seaTap={id:event.pointerId,x:event.clientX,y:event.clientY};
+      return;
+    }
+    dragging=true;go(p.x,p.y);
+    if(event.pointerType==='mouse')canvas.setPointerCapture(event.pointerId);
+  });
   canvas.addEventListener('pointermove',(event)=>{if(!dragging)return;const p=coords(event);target.x=Math.max(20,Math.min(width-20,p.x));target.y=Math.max(35,Math.min(height-40,p.y));if(reduced)go(p.x,p.y);});
-  const release=()=>{dragging=false;};
-  canvas.addEventListener('pointerup',release);canvas.addEventListener('pointercancel',release);canvas.addEventListener('lostpointercapture',release);
+  canvas.addEventListener('pointerup',event=>{
+    const tap=seaTap;seaTap=undefined;dragging=false;
+    if(tap&&tap.id===event.pointerId&&Math.hypot(event.clientX-tap.x,event.clientY-tap.y)<9)callbacks.bottle?.(1);
+  });
+  const cancel=()=>{seaTap=undefined;dragging=false;};
+  canvas.addEventListener('pointercancel',cancel);canvas.addEventListener('lostpointercapture',cancel);
+  document.addEventListener('pointerup',cancel);
   canvas.addEventListener('keydown',(event)=>{
     if(!['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','w','a','s','d'].includes(event.key))return;
     event.preventDefault();keys.add(event.key);moved=true;destination=null;if(!event.repeat)callbacks.step();if(reduced)renderOnce();

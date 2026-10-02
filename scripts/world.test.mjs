@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { walk, layout, gaze } from '../src/physics.js';
+import { marineSprites, stepMarine } from '../src/ocean.js';
 
 test('walking has momentum, settles at its destination, and remains inside the garden', () => {
   const body = { x: 100, y: 100, vx: 0, vy: 0 };
@@ -39,4 +40,21 @@ test('eyes follow the cursor in every direction but remain inside the face', () 
     assert.equal(Math.sign(look.x),Math.sign(x));assert.equal(Math.sign(look.y),Math.sign(y));
     assert.ok(Math.abs(look.x)<=1.7&&Math.abs(look.y)<=1.2);
   }
+});
+
+test('the surfer recovers after a knock instead of falling forever under a parked cursor', () => {
+  const surfer=marineSprites(390,1530).find(c=>c.kind==='surfer');
+  const pointer={x:surfer.x,y:surfer.y-10},body={x:0,y:0,vx:0,vy:0};
+  let knocks=0,pose;
+  for(let i=0;i<240;i++){
+    pose=stepMarine(surfer,1/60,i/60,390,1530,pointer,body,false);
+    if(pose.knocked)knocks++;
+    if(i===30)assert.equal(pose.fall,1,'the rider stays down long enough to see the splash');
+  }
+  assert.equal(knocks,1,'remaining hovered must not repeatedly knock the rider down');
+  assert.equal(pose.fall,0,'the rider gets back on the board');
+  stepMarine(surfer,1/60,5,390,1530,undefined,body,false);
+  assert.equal(stepMarine(surfer,1/60,5.1,390,1530,{x:surfer.x,y:surfer.y-10},body,false).knocked,true);
+  const still=stepMarine(surfer,1/60,5.2,390,1530,pointer,body,true);
+  assert.equal(still.fall,0);assert.equal(still.rotation,0);
 });

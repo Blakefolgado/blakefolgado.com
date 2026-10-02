@@ -24,3 +24,8 @@ export function gaze(x, y, pointer) {
   const distance = Math.max(80, Math.hypot(dx, dy));
   return { x: dx / distance * 1.7, y: dy / distance * 1.2 };
 }
+
+// Keep sea hit testing on the same moving shoreline that we draw.
+export function seaSurface(x, height, time = 0) {
+  return height - 124 + Math.sin(x * .017 + time * .8) * 5 + Math.sin(x * .037 - time * .55) * 3;
+}
