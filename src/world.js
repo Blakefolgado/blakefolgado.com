@@ -152,7 +152,12 @@ export async function createGarden(canvas, projects, callbacks) {
       buttons[index].style.left=`${pos.x}px`;buttons[index].style.top=`${pos.y}px`;
       const project=projects[index];
       const scale=small?.9:1;
-      const icon=sample(ctx=>ctx.drawImage(logos[index],128,8,64,64),scale,2).map(p=>({...p,logo:true}));
+      const icon=sample(ctx=>{
+        if(project.name==='Tradehand'){
+          ctx.beginPath();ctx.roundRect(128,8,64,64,14);ctx.clip();
+        }
+        ctx.drawImage(logos[index],128,8,64,64);
+      },scale,2).map(p=>({...p,logo:true}));
       const glints=[[-43,-79],[44,-54],[30,-108]].map(([x,y],i)=>({x:x*scale,y:y*scale,color:project.color,size:i?2:3,opacity:.35,glint:i+1}));
       const title=sample((ctx)=>{
         ctx.fillStyle=project.color;
