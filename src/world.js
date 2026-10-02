@@ -2,6 +2,7 @@ import * as THREE from '../vendor/three.module.js';
 import { walk, layout, gaze, seaSurface, visibleBounds, keepInView, wanderTarget } from './physics.js';
 import { makeScenery } from './scenery.js';
 import { marineSprites, stepMarine, knockSurfer } from './ocean.js';
+import { createMatrix, stepMatrix, strikePixels, neoPixels, agentPixels, BULLET_LIMIT } from './matrix.js';
 
 export async function createGarden(canvas, projects, callbacks) {
   const logos = await Promise.all(projects.map(async project => {
@@ -20,6 +21,10 @@ export async function createGarden(canvas, projects, callbacks) {
   let destination = null;
   let seaTap, marine = [], ripples = [], lastRipple = 0, previousPointer;
   let controlledAt = 0, wanderAt = 5, wandering = false;
+  let matrix, agents = [], bullets, sparkCloud, echoes = [], echoClock = 0;
+  let bulletTime = false, slowUntil = 0, dodgeUntil = 0, dodgeReady = 0;
+  const sparks = Array.from({ length: 128 }, () => ({ x: -100, y: -100, vx: 0, vy: 0, life: 0 }));
+  let sparkIndex = 0;
   const dialog = document.getElementById('bottle-dialog');
   const visitors = new Map();
   let bottleNearby = -1;
@@ -126,7 +131,7 @@ export async function createGarden(canvas, projects, callbacks) {
   }
   function stopWalking() {
     controlledAt=elapsed;wandering=false;wanderAt=elapsed+5;
-    dragging=false;keys.clear();moved=false;destination={bottle:1};
+    dragging=false;keys.clear();bulletTime=false;slowUntil=0;dodgeUntil=0;moved=false;destination={bottle:1};
     target.x=body.x;target.y=body.y;body.vx=body.vy=0;
   }
   function splash(x,y,strength=8) {
@@ -165,42 +170,23 @@ export async function createGarden(canvas, projects, callbacks) {
       clouds.push({object,home,scale,hover:0,velocity:new Float32Array(home.length*2)});
     });
     if(!hero){
-      const shape = [
-        '     hhhhh     ',
-        '    hhhhhhh    ',
-        '    hfffffh    ',
-        '    ffffffff   ',
-        '    sgsssgss   ',
-        '    sssffsss   ',
-        '    fffffff    ',
-        '     fffff     ',
-        '      fff      ',
-        '    clssscc    ',
-        '   cclssslcc   ',
-        '   cclssslcc   ',
-        '   cclssslcc   ',
-        '   cclssslcc   ',
-        '   fclssslcf   ',
-        '   fclssslcf   ',
-        '    clssscc    ',
-        '   cclsssccc   ',
-        '   cclsssccc   ',
-        '   cc sss cc   ',
-        '     ss ss     ',
-        '     ss ss     ',
-        '    sss sss    ',
-      ];
-      const palette = {h:'#242b28',s:'#19221f',c:'#293932',l:'#526757',f:'#e2c2a4',g:'#91caa6'};
-      const pixels=[];
-      shape.forEach((row,y)=>[...row].forEach((c,x)=>{
-        if(c!==' ') pixels.push({x:(x-7)*2.2,y:(y-11)*2.2,z:30,color:palette[c],size:2.3,eye:c==='g',leg:y>=20?(x<7?-1:1):0,upper:y<17,coat:c==='c'||c==='l'});
-      }));
+      const pixels = neoPixels();
       hero=dots(pixels,true);hero.userData.home=pixels;
       hero.userData.dodge={lean:0,velocity:0,side:1,hover:false};
       trail=dots(trailPoints.map(p=>({...p,z:5,color:'#aabe8d',size:3,opacity:0})),true);
       const circle=Array.from({length:24},(_,i)=>({x:Math.cos(i/24*Math.PI*2)*12,y:Math.sin(i/24*Math.PI*2)*5,z:1,color:'#91a77d',size:1.6,opacity:.65}));
       ring=dots(circle);ring.userData.life=0;
     }
+    agents.forEach(a=>remove(a.object));remove(bullets);remove(sparkCloud);echoes.forEach(remove);
+    matrix=createMatrix(width);
+    agents=matrix.agents.map(a=>{
+      const home=agentPixels();a.object=dots(home,true);a.object.userData.home=home;return a;
+    });
+    bullets=dots(Array.from({length:BULLET_LIMIT*9},(_,i)=>({x:-100,y:-100,z:36,color:i%9===0?'#64866c':'#bca96d',size:i%9===0?4:2,opacity:0})),true);
+    sparkCloud=dots(sparks.map((p,i)=>({...p,z:35,color:i%3?'#81bba1':'#e8c382',size:i%3?2:3,opacity:0})),true);
+    sparks.forEach(p=>{p.life=0;});
+    echoes=Array.from({length:3},()=>dots(hero.userData.home.map(p=>({...p,z:29,color:'#5fa18a',opacity:0})),true));
+    echoClock=0;
     remove(sea); bottles.forEach(remove);
     marine.forEach(creature=>remove(creature.object));ripples=[];previousPointer=undefined;
     remove(scenery); remove(sky);
@@ -224,14 +210,14 @@ export async function createGarden(canvas, projects, callbacks) {
     stopWalking();
     renderOnce();
   }
-  function poseCharacter(object,x,y,speed,vx,dt) {
+  function poseCharacter(object,x,y,speed,vx,dt,forced=false) {
     const dodge=object.userData.dodge;
     const hovering=!!pointer&&Math.abs(pointer.x-x)<45&&Math.abs(pointer.y-y)<43;
     if(hovering&&!dodge.hover)dodge.side=pointer.x>=x?-1:1;
     dodge.hover=hovering;
     if(reduced){dodge.lean=dodge.velocity=0;}
     else {
-      dodge.velocity+=((hovering?1:0)-dodge.lean)*38*dt-dodge.velocity*9*dt;
+      dodge.velocity+=((hovering||forced?1:0)-dodge.lean)*38*dt-dodge.velocity*9*dt;
       dodge.lean=Math.max(0,Math.min(1.06,dodge.lean+dodge.velocity*dt));
     }
     // The torso hinges at the hips; the legs keep their walking pose below it.
@@ -263,6 +249,69 @@ export async function createGarden(canvas, projects, callbacks) {
     target.y=Math.max(35,Math.min(height-40,body.y+dy/length*70));
     return {dx,dy};
   }
+  function bulletImpact(shot, cloud, pos, index) {
+    if(shot.hits&(1<<index))return;
+    // Broad phase keeps the dense lettering out of the per-bullet work unless crossed.
+    if(Math.max(shot.x,shot.px)<pos.x-165||Math.min(shot.x,shot.px)>pos.x+165||Math.max(shot.y,shot.py)<pos.y-125||Math.min(shot.y,shot.py)>pos.y+65)return;
+    const array=cloud.object.geometry.attributes.position.array;
+    const hit=strikePixels(shot,array,cloud.velocity,index);
+    if(!hit)return;
+    const {x,y}=hit;
+    for(let i=0;i<16;i++){
+      const p=sparks[sparkIndex++%sparks.length],angle=i*2.399963;
+      Object.assign(p,{x,y,vx:Math.cos(angle)*(50+i*5)+shot.vx*.2,vy:Math.sin(angle)*(50+i*5)+shot.vy*.2,life:1});
+    }
+  }
+  function updateBattle(dt,shots,visible,slow) {
+    agents.forEach((entry,index)=>{
+      const a=matrix.agents[index],object=entry.object;
+      object.visible=!!visible;
+      if(!visible)return;
+      const attr=object.geometry.attributes.position,opacity=object.geometry.attributes.opacity;
+      const stride=Math.sin(matrix.time*13+a.phase)*Math.min(1.5,Math.hypot(a.vx,a.vy)/45);
+      object.userData.home.forEach((p,i)=>{
+        const recoil=a.flash/.13*2;
+        attr.array[i*3]=p.arm||p.flash?(p.x-recoil)*Math.cos(a.aim)-p.y*Math.sin(a.aim):p.x+(p.eye?Math.cos(a.aim)*.6:0);
+        attr.array[i*3+1]=p.arm||p.flash?-4+(p.x-recoil)*Math.sin(a.aim)+p.y*Math.cos(a.aim):p.y+(p.leg?p.leg*stride:0);
+        if(p.flash)opacity.array[i]=a.flash>0?1:0;
+      });
+      attr.needsUpdate=opacity.needsUpdate=true;
+      object.position.set(a.x,a.y+Math.sin(matrix.time*13+a.phase)*.6,0);
+    });
+    bullets.visible=sparkCloud.visible=!!visible;
+    echoes.forEach(object=>{object.visible=!!visible;});
+    if(!visible)return;
+    for(const shot of shots)clouds.forEach((cloud,index)=>bulletImpact(shot,cloud,positions[index],index));
+    const bp=bullets.geometry.attributes.position,bo=bullets.geometry.attributes.opacity;
+    bo.array.fill(0);
+    shots.forEach((b,i)=>{
+      for(let j=0;j<9;j++){
+        const n=i*9+j;
+        bp.array[n*3]=b.x-b.vx/260*j*4;
+        bp.array[n*3+1]=b.y-b.vy/260*j*4;
+        bo.array[n]=j===0?1:(1-j/9)*(slow?.8:.5);
+      }
+    });bp.needsUpdate=bo.needsUpdate=true;
+    const sp=sparkCloud.geometry.attributes.position,so=sparkCloud.geometry.attributes.opacity;
+    sparks.forEach((p,i)=>{
+      const step=dt*matrix.scale;
+      p.life=Math.max(0,p.life-step*1.9);p.x+=p.vx*step;p.y+=p.vy*step;p.vx*=Math.exp(-3*step);p.vy*=Math.exp(-3*step);
+      sp.array[i*3]=p.x;sp.array[i*3+1]=p.y;so.array[i]=p.life*.85;
+    });sp.needsUpdate=so.needsUpdate=true;
+    echoClock+=dt;
+    if((slow||elapsed<dodgeUntil)&&Math.hypot(body.vx,body.vy)>25&&echoClock>.055){
+      const object=echoes.shift();echoes.push(object);echoClock=0;
+      object.geometry.attributes.position.array.set(hero.geometry.attributes.position.array);
+      object.geometry.attributes.position.needsUpdate=true;
+      object.position.copy(hero.position);object.rotation.copy(hero.rotation);object.scale.copy(hero.scale);
+      object.userData.life=1;
+    }
+    echoes.forEach(object=>{
+      object.userData.life=Math.max(0,(object.userData.life||0)-dt*2.2);
+      object.geometry.attributes.opacity.array.fill(object.userData.life*.2);
+      object.geometry.attributes.opacity.needsUpdate=true;
+    });
+  }
   function update(dt) {
     const rect=canvas.getBoundingClientRect();
     const bounds=visibleBounds(rect,{width:window.innerWidth,height:window.innerHeight});
@@ -270,7 +319,7 @@ export async function createGarden(canvas, projects, callbacks) {
     elapsed+=dt;
     if(bounds)keepInView(body,target,bounds);
     const hovered=pointer&&Math.abs(pointer.x-body.x)<45&&Math.abs(pointer.y-body.y)<43;
-    if(dragging||keys.size||dialog.open||hovered){
+    if(dragging||keys.size||bulletTime||elapsed<dodgeUntil||dialog.open||hovered){
       controlledAt=elapsed;
       if(wandering){target.x=body.x;target.y=body.y;wandering=false;}
     }
@@ -289,9 +338,14 @@ export async function createGarden(canvas, projects, callbacks) {
     if(!reduced&&bounds)walk(body,target,dt,width,height,wandering?100:390);
     if(bounds)keepInView(body,target,bounds);
     const speed=Math.hypot(body.vx,body.vy);
-    const lean=poseCharacter(hero,body.x,body.y,speed,body.vx,dt);
+    const slow=bulletTime||elapsed<slowUntil;
+    const shooting=!reduced&&bounds&&!dialog.open;
+    const shots=stepMatrix(matrix,dt,body,bounds,{slow,dodging:slow||elapsed<dodgeUntil||hero.userData.dodge.lean>.4,paused:!shooting});
+    const evade=slow||elapsed<dodgeUntil||matrix.time-matrix.hitAt<.38;
+    const lean=poseCharacter(hero,body.x,body.y,speed,body.vx,dt,evade);
     const bob=reduced?0:Math.sin(elapsed*(speed>15?18:2.5))*(speed>15?1.8:1.4)*(1-lean);
     hero.position.set(body.x,body.y+bob,0);
+    updateBattle(dt,shots,shooting,slow);
     const waterPositions=sea.geometry.attributes.position, waterOpacity=sea.geometry.attributes.opacity;
     const time=reduced?0:elapsed;
     ripples=ripples.filter(r=>elapsed-r.at<2.4);
@@ -371,6 +425,7 @@ export async function createGarden(canvas, projects, callbacks) {
       poseCharacter(visitor.object,visitor.object.position.x,visitor.object.position.y,Math.min(150,Math.hypot(dx,dy)*3),Math.max(-180,Math.min(180,dx*3)),dt);
     });
     let found=-1;
+    const cloudStep=dt*matrix.scale;
     positions.forEach((pos,index)=>{
       const cloud=clouds[index],attr=cloud.object.geometry.attributes.position,array=attr.array;
       const tilt=reduced?0:Math.sin(elapsed*.7+index*1.4)*.055;
@@ -400,9 +455,9 @@ export async function createGarden(canvas, projects, callbacks) {
             vy+=((distance?py/distance:0)+Math.sin(angle)*.35)*force;
           }
         }
-        vx+=((hx-array[i*3])*28-vx*6)*dt;
-        vy+=((hy-array[i*3+1])*28-vy*6)*dt;
-        array[i*3]+=vx*dt;array[i*3+1]+=vy*dt;
+        vx+=((hx-array[i*3])*28-vx*6)*cloudStep;
+        vy+=((hy-array[i*3+1])*28-vy*6)*cloudStep;
+        array[i*3]+=vx*cloudStep;array[i*3+1]+=vy*cloudStep;
         cloud.velocity[i*2]=vx;cloud.velocity[i*2+1]=vy;
       }
       attr.needsUpdate=true;
@@ -426,7 +481,7 @@ export async function createGarden(canvas, projects, callbacks) {
   function renderOnce(){update(1/60);renderer.render(scene,camera);}
   function animate(now){if(!active)return;const dt=Math.min((now-last)/1000||1/60,1/30);last=now;update(dt);renderer.render(scene,camera);frame=requestAnimationFrame(animate);}
   function setActive(value){
-    active=value;cancelAnimationFrame(frame);keys.clear();dragging=false;seaTap=undefined;
+    active=value;cancelAnimationFrame(frame);keys.clear();bulletTime=false;slowUntil=0;dodgeUntil=0;dragging=false;seaTap=undefined;
     if(value){if(width!==canvas.clientWidth||height!==canvas.clientHeight)build();last=performance.now();if(reduced)renderOnce();else frame=requestAnimationFrame(animate);}
   }
   function coords(event){const rect=canvas.getBoundingClientRect();return{x:event.clientX-rect.left,y:event.clientY-rect.top};}
@@ -463,11 +518,26 @@ export async function createGarden(canvas, projects, callbacks) {
   document.addEventListener('keydown',(event)=>{
     const key=movementKey(event);
     if(!active||dialog.open||editing(event.target)||event.isComposing||event.metaKey||event.ctrlKey||event.altKey)return;
+    if(key===' '||key==='Shift'){
+      // Do not steal Space from a focused link/button or start action off-screen.
+      if(!visibleBounds(canvas.getBoundingClientRect(),{width:innerWidth,height:innerHeight})||reduced)return;
+      if(key===' '&&event.target instanceof Element&&event.target.closest('a,button'))return;
+      event.preventDefault();controlledAt=elapsed;
+      if(wandering){target.x=body.x;target.y=body.y;wandering=false;}
+      if(key===' '){bulletTime=true;if(!event.repeat)slowUntil=elapsed+1.2;}
+      else if(!event.repeat&&elapsed>=dodgeReady){
+        dodgeUntil=elapsed+.65;dodgeReady=elapsed+.85;
+        hero.userData.dodge.side=body.vx>0?-1:1;
+        callbacks.step();
+      }
+      return;
+    }
     if(!['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','w','a','s','d'].includes(key))return;
     event.preventDefault();controlledAt=elapsed;wandering=false;keys.add(key);moved=true;destination=null;steer();
     if(!event.repeat)callbacks.step();if(reduced)renderOnce();
   });
   document.addEventListener('keyup',(event)=>{
+    if(event.key===' '){bulletTime=false;return;}
     if(!keys.delete(movementKey(event)))return;
     if(!keys.size&&Math.hypot(body.vx,body.vy)>20){target.x=body.x+body.vx*.12;target.y=body.y+body.vy*.12;}
   });

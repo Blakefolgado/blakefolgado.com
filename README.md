@@ -23,6 +23,10 @@ Scrolling confines Neo to the visible part of the world with room for the whole 
 
 Arrow keys and WASD work anywhere on the page without focusing the canvas. Both short taps and held keys move the character, including shifted uppercase WASD. Inputs, bottle dialogs, text composition and browser shortcuts keep normal keyboard behaviour. Losing window focus clears movement so held keys cannot get stuck.
 
+Two suited Matrix agents on small screens, or three on larger screens, chase Neo and aim their pistols at his position when firing. These are clearly game enemies, separate from actual visitor presence. The slimmer Neo sprite has black hair, narrow sunglasses, boots and a long black coat. Hold Space for bullet time, or tap it for a short slow-motion burst; enemy movement, firing, bullets and pixel impacts slow while Neo's movement controls remain responsive. Press Shift for a short backward dodge, or hover Neo to bend away from the cursor. Moving in bullet time or during a dodge leaves fading green afterimages. A shot that catches Neo prompts a brief defensive bend; there is no death, health bar or interruption to browsing.
+
+Bullets travel as visible pixel streaks, with small muzzle flashes. Their swept paths strike actual logo and lettering pixels, producing a local burst that springs back together; one bullet can pass through more than one app. Bullets and enemies cannot activate links or bottles. The action stops outside the visible world and while a bottle dialog is open; reduced motion hides it. There are at most 24 bullets, 128 impact particles and three afterimages, with reused geometry and no backend traffic, model requests or extra services. Space retains its normal action on focused buttons and links.
+
 The two talk links and previous roles come from the repository’s existing content. The former `content/site-content.json` remains historical source material and is not used at runtime. The photo favicon is preserved.
 
 ## Bottles, visitors and free AI
@@ -49,6 +53,6 @@ Vercel builds with `pnpm build` and serves `dist` plus the API. This branch remo
 
 ## Checks
 
-`pnpm test` covers momentum and bounds, priority-preserving random layouts, eye bounds, surfer recovery, note retention and idempotency, visitor expiration, shared abuse limits, concurrent local saves and the prohibition on paid model fallbacks. Browser checks cover mobile width, rendering, arrivals, new-tab navigation and the shoreline dialogs. A successful local free-model response has been observed. Cloud database behavior remains unverified until provisioning is complete.
+`pnpm test` covers momentum and bounds, priority-preserving random layouts, eye bounds, surfer recovery, agent pursuit, projectile bounds and limits, bullet time, swept pixel impacts and dodge reactions, note retention and idempotency, visitor expiration, shared abuse limits, concurrent local saves and the prohibition on paid model fallbacks. Browser checks cover mobile width, rendering, arrivals, new-tab navigation and the shoreline dialogs. A successful local free-model response has been observed. Cloud database behavior remains unverified until provisioning is complete.
 
 Geist Pixel Square is pinned from `vercel/geist-pixel-font` commit `bd5f6cca54c0b179115d8a3fd89385db607034c2`; its SIL Open Font License is included in `assets/fonts/`.
