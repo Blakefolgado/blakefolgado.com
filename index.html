@@ -48,9 +48,9 @@
         <p id="bottle-title"></p>
         <p id="bottle-message" aria-live="polite"></p>
         <form id="note-form" hidden>
-          <label class="sr-only" for="note-text">Your public note</label>
+          <label id="note-label" class="sr-only" for="note-text">Your public note</label>
           <textarea id="note-text" maxlength="180" rows="3" placeholder="A little something for the next person…" required></textarea>
-          <div class="note-bottom"><small>Visible to everyone.</small><button type="submit">Set it afloat</button></div>
+          <div class="note-bottom"><small id="note-scope">Visible to everyone.</small><button type="submit">Set it afloat</button></div>
         </form>
         <div id="bottle-actions"><button id="another-bottle" type="button">Another bottle</button><button id="write-note" type="button">Leave a note</button></div>
         <p id="bottle-status" role="status"></p>

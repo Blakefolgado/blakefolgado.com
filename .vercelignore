@@ -1,0 +1,6 @@
+.local/
+.env*
+worktrees/
+dist/
+node_modules/
+scripts/*.test.mjs

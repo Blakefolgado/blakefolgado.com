@@ -287,8 +287,8 @@ export async function createGarden(canvas, projects, callbacks) {
   function updateBattle(dt,shots,visible,slow) {
     agents.forEach((entry,index)=>{
       const a=matrix.agents[index],object=entry.object;
-      object.visible=!!visible;
-      if(!visible)return;
+      object.visible=!!visible&&matrix.time>=a.appearAt;
+      if(!object.visible)return;
       const attr=object.geometry.attributes.position,opacity=object.geometry.attributes.opacity;
       const stride=Math.sin(matrix.time*13+a.phase)*Math.min(1.5,Math.hypot(a.vx,a.vy)/45);
       object.userData.home.forEach((p,i)=>{
@@ -368,7 +368,7 @@ export async function createGarden(canvas, projects, callbacks) {
     const speed=Math.hypot(body.vx,body.vy);
     const slow=bulletTime||elapsed<slowUntil;
     const shooting=!reduced&&bounds&&!dialog.open;
-    const shots=stepMatrix(matrix,dt,body,bounds,{slow,dodging:slow||elapsed<dodgeUntil||hero.userData.dodge.lean>.4,paused:!shooting});
+    const shots=stepMatrix(matrix,dt,body,bounds,{slow,dodging:slow||elapsed<dodgeUntil||hero.userData.dodge.lean>.4,paused:!shooting,pointer});
     const evade=slow||elapsed<dodgeUntil||matrix.time-matrix.hitAt<.38;
     const lean=poseCharacter(hero,body.x,body.y,speed,body.vx,dt,evade);
     const bob=reduced?0:Math.sin(elapsed*(speed>15?18:2.5))*(speed>15?1.8:1.4)*(1-lean);

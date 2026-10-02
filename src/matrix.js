@@ -27,12 +27,14 @@ export function strikePixels(shot, array, velocity, index) {
 }
 
 export function createMatrix(width) {
-  return { agents: Array.from({ length: width < 650 ? 2 : 3 }, (_, i) => ({
+  const initial = width < 650 ? 2 : 3;
+  return { agents: Array.from({ length: initial * 2 }, (_, i) => ({
     x: 0, y: 0, vx: 0, vy: 0, aim: 0, cooldown: 1.2 + i * .6, flash: 0, phase: i * 2.4,
+    appearAt: i < initial ? 0 : (i - initial + 1) * 18,
   })), bullets: [], scale: 1, time: 0, started: false, hitAt: -10 };
 }
 
-export function stepMatrix(state, dt, body, bounds, { slow = false, dodging = false, paused = false } = {}) {
+export function stepMatrix(state, dt, body, bounds, { slow = false, dodging = false, paused = false, pointer } = {}) {
   if (!bounds || paused) return [];
   state.scale += ((slow ? .09 : 1) - state.scale) * Math.min(1, dt * 12);
   const step = Math.min(dt, 1 / 30) * state.scale;
@@ -45,6 +47,7 @@ export function stepMatrix(state, dt, body, bounds, { slow = false, dodging = fa
     state.started = true;
   }
   for (const a of state.agents) {
+    if (state.time < a.appearAt) continue;
     // Re-enter the current view after a scroll instead of chasing from another screen.
     a.x = Math.max(bounds.left, Math.min(bounds.right, a.x));
     a.y = Math.max(bounds.top, Math.min(bounds.bottom, a.y));
@@ -53,10 +56,18 @@ export function stepMatrix(state, dt, body, bounds, { slow = false, dodging = fa
     const orbit = Math.sin(state.time * .65 + a.phase) * 22;
     let separateX = 0, separateY = 0;
     for (const other of state.agents) {
-      if (other === a) continue;
+      if (other === a || state.time < other.appearAt) continue;
       const sx = a.x - other.x, sy = a.y - other.y, apart = Math.hypot(sx, sy);
       if (apart > 0 && apart < 65) {
         separateX += sx / apart * (65 - apart); separateY += sy / apart * (65 - apart);
+      }
+    }
+    if (pointer) {
+      const px = a.x - pointer.x, py = a.y - pointer.y, away = Math.hypot(px, py);
+      if (away < 110) {
+        const force = (1 - away / 110) * 420;
+        separateX += (away ? px / away : Math.cos(a.phase)) * force;
+        separateY += (away ? py / away : Math.sin(a.phase)) * force;
       }
     }
     a.vx += ((dx / distance * chase - dy / distance * orbit + separateX) - a.vx) * Math.min(1, step * 4);

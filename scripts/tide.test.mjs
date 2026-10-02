@@ -4,7 +4,8 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { changeState, exchange, validate, dream } from '../server/tide.js';
+import handler, { changeState, exchange, validate, dream } from '../server/tide.js';
+import { privateExchange } from '../src/tide.js';
 
 test('real visitors expire, notes persist and retries do not duplicate a saved bottle', () => {
   const state = {}, id = randomUUID(), other = randomUUID(), now = Date.now();
@@ -67,4 +68,34 @@ test('dream generation is free-only and never retries with a paid model', async 
   };
   try { await assert.rejects(dream(), /No new daydreams/); assert.equal(calls, 1); }
   finally { global.fetch = originalFetch; if (originalKey === undefined) delete process.env.OPENROUTER_API_KEY; else process.env.OPENROUTER_API_KEY = originalKey; }
+});
+
+test('unconfigured production explicitly uses private bottles without storage or AI calls', async () => {
+  const names=['VERCEL','KV_REST_API_URL','KV_REST_API_TOKEN','UPSTASH_REDIS_REST_URL','UPSTASH_REDIS_REST_TOKEN'];
+  const saved=names.map(name=>process.env[name]),originalFetch=global.fetch;
+  names.forEach(name=>delete process.env[name]);process.env.VERCEL='1';
+  global.fetch=async()=>{throw new Error('An unconfigured shore must not call a provider');};
+  try {
+    for(const action of ['sync','note','dream']){
+      const req={method:'POST',headers:{origin:'https://example.test',host:'example.test','content-type':'application/json'},body:{id:randomUUID(),action,x:.2,y:.8,noteId:randomUUID(),text:'Hello'}};
+      let result;const res={setHeader(){},end(body){result=JSON.parse(body);}};
+      await handler(req,res);
+      assert.equal(res.statusCode,200);assert.deepEqual(result,{localOnly:true});
+      assert.ok(!result.saved,'the server cannot claim a browser save happened');
+    }
+  } finally {
+    global.fetch=originalFetch;names.forEach((name,i)=>{if(saved[i]===undefined)delete process.env[name];else process.env[name]=saved[i];});
+  }
+});
+
+test('private bottles persist exact wording, deduplicate retries, and fail loudly on a blocked browser save', () => {
+  const data=new Map(),storage={getItem:key=>data.get(key),setItem:(key,value)=>data.set(key,value)};
+  const input={action:'note',noteId:randomUUID(),text:'  My own little sea. 🌊\nHello!  '};
+  assert.equal(privateExchange(storage,input).saved,input.noteId);
+  privateExchange(storage,input);
+  const loaded=privateExchange(storage,{action:'sync'});
+  assert.deepEqual(loaded.people,[]);assert.equal(loaded.notes.length,1);assert.equal(loaded.notes[0].text,input.text);
+  assert.equal(privateExchange(storage,{action:'dream'}).dream,null,'private mode invents neither visitors nor AI messages');
+  assert.throws(()=>privateExchange({...storage,setItem(){throw new Error('Quota exceeded');}},input),/could not save/);
+  assert.throws(()=>privateExchange({...storage,getItem(){return '{broken';}},input),/could not be read/);
 });

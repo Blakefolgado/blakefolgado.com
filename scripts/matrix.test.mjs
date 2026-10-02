@@ -14,7 +14,22 @@ test('agents close the distance, fire, and stay inside the newly scrolled view',
   assert.ok(state.bullets.length > 0, 'the chase includes visible projectiles');
   const scrolled = { ...bounds, top: 700, bottom: 1100 };
   stepMatrix(state, 1 / 60, { ...body, y: 820 }, scrolled);
-  assert.ok(state.agents.every(a => a.y >= 700 && a.y <= 1100), 'scrolling cannot strand pursuers on another screen');
+  assert.ok(state.agents.filter(a => state.time >= a.appearAt).every(a => a.y >= 700 && a.y <= 1100), 'scrolling cannot strand pursuers on another screen');
+});
+
+test('all agents retreat from the mouse, including later arrivals and exact overlaps', () => {
+  for (const width of [390,1000]) {
+    const state=createMatrix(width);state.started=true;state.time=60;
+    assert.equal(state.agents.length,width<650?4:6,'reinforcements stay bounded');
+    for (const agent of state.agents) {
+      state.agents.forEach((a,i)=>Object.assign(a,{x:850,y:70+i*65,vx:0,vy:0}));
+      Object.assign(agent,{x:450,y:300,vx:0,vy:0});
+      const pointer={x:450,y:300};
+      for(let i=0;i<45;i++)stepMatrix(state,1/60,{x:450,y:300},bounds,{pointer});
+      assert.ok(Math.hypot(agent.x-pointer.x,agent.y-pointer.y)>65,'hovering moves even a new arrival clear of the pointer');
+      assert.ok(Number.isFinite(agent.x)&&Number.isFinite(agent.y),'an exact cursor overlap cannot divide by zero');
+    }
+  }
 });
 
 test('bullet time slows projectile travel and firing while a paused scene does no work', () => {

@@ -132,6 +132,11 @@ export default async function handler(req, res) {
     }
     if (Buffer.byteLength(JSON.stringify(body) || '') > 2048) throw new TideError(413, 'That bottle is too full.');
     const input = validate(body);
+    // No database: explicitly use private browser bottles, without failed polling
+    // or unbounded server memory. Never claim a note was saved by this endpoint.
+    if (process.env.VERCEL && (!(process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL) || !(process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN))) {
+      res.statusCode = 200; res.end(JSON.stringify({ localOnly: true })); return;
+    }
     const address = process.env.VERCEL ? req.headers['x-vercel-forwarded-for'] : req.socket.remoteAddress;
     if (!address) throw new TideError(503, 'The shore is unavailable.');
     // Salted, rotating daily hash for limits; never persist or return raw IP addresses.

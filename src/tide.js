@@ -1,3 +1,19 @@
+export function privateExchange(storage, input) {
+  const key='pixel-garden:private-bottles';
+  let notes;
+  try { notes=JSON.parse(storage.getItem(key)||'[]'); }
+  catch { throw new Error('Your saved bottles could not be read. Your note is still here.'); }
+  if(!Array.isArray(notes)||notes.some(n=>!n||typeof n.id!=='string'||typeof n.text!=='string'||!Number.isFinite(n.at)))throw new Error('Your saved bottles could not be read. Your note is still here.');
+  if(input.action==='note'){
+    if(typeof input.text!=='string'||!input.text.trim()||input.text.length>180)throw new Error('A note needs 1–180 characters.');
+    if(!notes.some(n=>n.id===input.noteId))notes.push({id:input.noteId,text:input.text,at:Date.now()});
+    try { storage.setItem(key,JSON.stringify(notes.slice(-256))); }
+    catch { throw new Error('This browser could not save your bottle. Your note is still here.'); }
+    return {saved:input.noteId};
+  }
+  return {people:[],notes:notes.slice(-40),dreams:[],dream:null};
+}
+
 export function connectTide(garden, chime) {
   const $ = id => document.getElementById(id);
   const id = crypto.randomUUID();
@@ -5,8 +21,10 @@ export function connectTide(garden, chime) {
   let notes = [], dreams = [], previous, timer, busy = false, lastRequest = 0, lastActive = Date.now(), requestVersion = 0;
   let noteId = crypto.randomUUID();
   let stopped = false, failures = 0, syncing = false, dreamCheck = 0;
+  let localOnly = false;
 
   async function request(data) {
+    if(localOnly)return privateExchange(localStorage,data);
     // Share one request lane so saving a bottle doesn't race a presence heartbeat.
     while (busy || Date.now() - lastRequest < 1100) await new Promise(resolve => setTimeout(resolve, 100));
     busy = true; lastRequest = Date.now();
@@ -14,6 +32,14 @@ export function connectTide(garden, chime) {
       const response = await fetch('/api/tide', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...data, id }), signal: AbortSignal.timeout(25000) });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || 'The shore is unavailable.');
+      if(result.localOnly){
+        localOnly=true;
+        $('note-scope').textContent='Saved on this device.';
+        $('note-label').textContent='Your note';
+        $('note-text').placeholder='A little something to find again…';
+        if(!$('note-form').hidden)$('bottle-title').textContent='A note for later';
+        return privateExchange(localStorage,data);
+      }
       return result;
     } finally { busy = false; }
   }
@@ -25,7 +51,7 @@ export function connectTide(garden, chime) {
     try {
       const data = await request({ action: 'sync', ...garden.position() });
       garden.setVisitors(data.people); notes = data.notes; dreams = data.dreams; failures = 0;
-      if (Date.now() - dreamCheck > 3600000 && Date.now() - (dreams.at(-1)?.at || 0) > 3600000) {
+      if (!localOnly && Date.now() - dreamCheck > 3600000 && Date.now() - (dreams.at(-1)?.at || 0) > 3600000) {
         dreamCheck = Date.now();
         request({ action: 'dream' }).then(data => { if (data.dream) dreams = [...dreams.filter(d => d.id !== data.dream.id), data.dream]; }).catch(error => console.warn('Free daydream:', error.message));
       }
@@ -34,7 +60,7 @@ export function connectTide(garden, chime) {
       if (failures === 1) console.warn('Shared shore:', error.message);
     }
     syncing = false;
-    if (!stopped && !document.hidden) timer = setTimeout(sync, failures ? Math.min(60000, 10000 * failures) : 5000);
+    if (!localOnly && !stopped && !document.hidden) timer = setTimeout(sync, failures ? Math.min(60000, 10000 * failures) : 5000);
   }
 
   function show() {
@@ -44,7 +70,7 @@ export function connectTide(garden, chime) {
   }
   function write() {
     requestVersion++; show();
-    $('bottle-title').textContent = 'A note for someone';
+    $('bottle-title').textContent = localOnly ? 'A note for later' : 'A note for someone';
     $('bottle-message').hidden = true; $('bottle-actions').hidden = true; $('note-form').hidden = false;
     $('note-text').focus();
   }
@@ -55,7 +81,8 @@ export function connectTide(garden, chime) {
     $('bottle-message').textContent = 'Listening to the sea…';
     $('another-bottle').disabled = true;
     try {
-      const pool = [...notes.map(note => ({ ...note, kind: 'A visitor left this' })), ...dreams.map(note => ({ ...note, kind: 'A daydream · AI' }))];
+      if(localOnly)notes=privateExchange(localStorage,{action:'sync'}).notes;
+      const pool = [...notes.map(note => ({ ...note, kind: localOnly ? 'Saved on this device' : 'A visitor left this' })), ...dreams.map(note => ({ ...note, kind: 'A daydream · AI' }))];
       let choices = pool.filter(note => note.id !== previous);
       if (!choices.length) choices = pool;
       let chosen = choices[Math.floor(Math.random() * choices.length)];
@@ -85,7 +112,7 @@ export function connectTide(garden, chime) {
       notes.push({ id: noteId, text, at: Date.now() }); noteId = crypto.randomUUID();
       $('note-text').value = '';
       if (version === requestVersion && dialog.open) {
-        $('bottle-title').textContent = 'Set afloat'; $('bottle-message').textContent = text;
+        $('bottle-title').textContent = localOnly ? 'Saved on this device' : 'Set afloat'; $('bottle-message').textContent = text;
         $('bottle-message').hidden = false; $('note-form').hidden = true; $('bottle-actions').hidden = false; $('bottle-status').textContent = '';
         chime(4);
       }
