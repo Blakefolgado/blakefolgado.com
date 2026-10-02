@@ -152,30 +152,37 @@ export async function createGarden(canvas, projects, callbacks) {
     });
     if(!hero){
       const shape = [
-        '       a       ',
-        '       s       ',
-        '   sssssssss   ',
-        '  swwwwwwwwws  ',
-        ' ssfffffffffss ',
-        ' swffeefeeffws ',
-        ' swffeefeeffws ',
-        ' ssfffffffffss ',
-        '  swwwwwwwwws  ',
-        '   sssssssss   ',
-        ' ssswwwwwwwsss ',
-        ' swswwaawwwsws ',
-        ' swswwwwwwwsws ',
-        '  sswwwwwwwss  ',
-        '    sssssss    ',
-        '    ss   ss    ',
-        '   sss   sss   ',
+        '     hhhhh     ',
+        '    hhhhhhh    ',
+        '    hfffffh    ',
+        '    ffffffff   ',
+        '    sgsssgss   ',
+        '    sssffsss   ',
+        '    fffffff    ',
+        '     fffff     ',
+        '      fff      ',
+        '    clssscc    ',
+        '   cclssslcc   ',
+        '   cclssslcc   ',
+        '   cclssslcc   ',
+        '   cclssslcc   ',
+        '   fclssslcf   ',
+        '   fclssslcf   ',
+        '    clssscc    ',
+        '   cclsssccc   ',
+        '   cclsssccc   ',
+        '   cc sss cc   ',
+        '     ss ss     ',
+        '     ss ss     ',
+        '    sss sss    ',
       ];
-      const palette = {s:'#997452',w:'#e4b878',f:'#fbecd3',e:'#536a60',a:'#8bb5a2'};
+      const palette = {h:'#242b28',s:'#19221f',c:'#293932',l:'#526757',f:'#e2c2a4',g:'#91caa6'};
       const pixels=[];
       shape.forEach((row,y)=>[...row].forEach((c,x)=>{
-        if(c!==' ') pixels.push({x:(x-7)*2.4,y:(y-8)*2.4,z:30,color:palette[c],size:2.5,eye:c==='e',leg:y>=15?(x<7?-1:1):0});
+        if(c!==' ') pixels.push({x:(x-7)*2.2,y:(y-11)*2.2,z:30,color:palette[c],size:2.3,eye:c==='g',leg:y>=20?(x<7?-1:1):0,upper:y<17,coat:c==='c'||c==='l'});
       }));
       hero=dots(pixels,true);hero.userData.home=pixels;
+      hero.userData.dodge={lean:0,velocity:0,side:1,hover:false};
       trail=dots(trailPoints.map(p=>({...p,z:5,color:'#aabe8d',size:3,opacity:0})),true);
       const circle=Array.from({length:24},(_,i)=>({x:Math.cos(i/24*Math.PI*2)*12,y:Math.sin(i/24*Math.PI*2)*5,z:1,color:'#91a77d',size:1.6,opacity:.65}));
       ring=dots(circle);ring.userData.life=0;
@@ -200,6 +207,37 @@ export async function createGarden(canvas, projects, callbacks) {
     target.x=body.x;target.y=body.y;nearby=-1;bottleNearby=-1;
     renderOnce();
   }
+  function poseCharacter(object,x,y,speed,vx,dt) {
+    const dodge=object.userData.dodge;
+    const hovering=!!pointer&&Math.abs(pointer.x-x)<45&&Math.abs(pointer.y-y)<43;
+    if(hovering&&!dodge.hover)dodge.side=pointer.x>=x?-1:1;
+    dodge.hover=hovering;
+    if(reduced){dodge.lean=dodge.velocity=0;}
+    else {
+      dodge.velocity+=((hovering?1:0)-dodge.lean)*38*dt-dodge.velocity*9*dt;
+      dodge.lean=Math.max(0,Math.min(1.06,dodge.lean+dodge.velocity*dt));
+    }
+    // The torso hinges at the hips; the legs keep their walking pose below it.
+    const angle=dodge.lean*dodge.side*1.14,cos=Math.cos(angle),sin=Math.sin(angle),hip=12;
+    const stride=reduced?0:Math.sin(elapsed*18)*Math.min(speed/70,2.2);
+    const look=gaze(x,y,pointer);
+    const pose=object.geometry.attributes.position;
+    object.userData.home.forEach((pixel,index)=>{
+      let px=pixel.x+(pixel.eye?look.x*.55:0);
+      let py=pixel.y+pixel.leg*stride+(pixel.eye?look.y*.55:0);
+      if(pixel.upper){
+        const dy=py-hip;
+        py=hip+px*sin+dy*cos;px=px*cos-dy*sin;
+      } else if(pixel.coat&&!reduced) {
+        px+=Math.sin(elapsed*7+pixel.y*.15)*Math.min(speed/140,1.4)+dodge.side*dodge.lean*(pixel.y-hip)*.45;
+      }
+      pose.array[index*3]=px;pose.array[index*3+1]=py;
+    });
+    pose.needsUpdate=true;
+    object.rotation.z=reduced?0:vx*.00036*(1-dodge.lean);
+    object.scale.set(1+Math.min(speed/2500,.13)*(1-dodge.lean),1-Math.min(speed/3500,.1)*(1-dodge.lean),1);
+    return dodge.lean;
+  }
   function update(dt) {
     if(pointerClient)pointer=coords(pointerClient);
     elapsed+=dt;
@@ -213,18 +251,9 @@ export async function createGarden(canvas, projects, callbacks) {
     }
     if(!reduced)walk(body,target,dt,width,height);
     const speed=Math.hypot(body.vx,body.vy);
-    const bob=reduced?0:Math.sin(elapsed*(speed>15?18:2.5))*(speed>15?1.8:1.4);
+    const lean=poseCharacter(hero,body.x,body.y,speed,body.vx,dt);
+    const bob=reduced?0:Math.sin(elapsed*(speed>15?18:2.5))*(speed>15?1.8:1.4)*(1-lean);
     hero.position.set(body.x,body.y+bob,0);
-    const stride = reduced ? 0 : Math.sin(elapsed*18)*Math.min(speed/70,2.2);
-    const pose = hero.geometry.attributes.position;
-    const look=gaze(body.x,body.y,pointer);
-    hero.userData.home.forEach((pixel,index)=>{
-      pose.array[index*3]=pixel.x+(pixel.eye?look.x:0);
-      pose.array[index*3+1]=pixel.y+pixel.leg*stride+(pixel.eye?look.y:0);
-    });
-    pose.needsUpdate=true;
-    hero.rotation.z=reduced?0:body.vx*.00036;
-    hero.scale.set(1+Math.min(speed/2500,.13),1-Math.min(speed/3500,.1),1);
     const waterPositions=sea.geometry.attributes.position, waterOpacity=sea.geometry.attributes.opacity;
     const time=reduced?0:elapsed;
     const skyPosition=sky.geometry.attributes.position,skyOpacity=sky.geometry.attributes.opacity;
@@ -276,13 +305,7 @@ export async function createGarden(canvas, projects, callbacks) {
       const dx=visitor.x*width-visitor.object.position.x,dy=visitor.y*height-visitor.object.position.y;
       visitor.object.position.x+=dx*(reduced?1:Math.min(1,dt*3));
       visitor.object.position.y+=dy*(reduced?1:Math.min(1,dt*3));
-      visitor.object.rotation.z=reduced?0:Math.max(-.1,Math.min(.1,dx*.003));
-      const look=gaze(visitor.object.position.x,visitor.object.position.y,pointer);
-      const pose=visitor.object.geometry.attributes.position;
-      hero.userData.home.forEach((pixel,index)=>{
-        pose.array[index*3]=pixel.x+(pixel.eye?look.x:0);
-        pose.array[index*3+1]=pixel.y+(pixel.eye?look.y:0);
-      });pose.needsUpdate=true;
+      poseCharacter(visitor.object,visitor.object.position.x,visitor.object.position.y,Math.min(150,Math.hypot(dx,dy)*3),Math.max(-180,Math.min(180,dx*3)),dt);
     });
     let found=-1;
     positions.forEach((pos,index)=>{
@@ -368,7 +391,10 @@ export async function createGarden(canvas, projects, callbacks) {
         let visitor=visitors.get(person.id);
         if(!visitor){
           const color=['#a5b9cd','#baa8ca','#a4b99c','#d3a8b4'][parseInt(person.id.slice(0,2),16)%4];
-          const object=dots(hero.userData.home.map(p=>({...p,color:p.color==='#e4b878'?color:p.color,opacity:.7})),true);
+          const pixels=hero.userData.home.map(p=>({...p,color:p.coat?color:p.color,opacity:.7}));
+          const object=dots(pixels,true);
+          object.userData.home=pixels;
+          object.userData.dodge={lean:0,velocity:0,side:1,hover:false};
           object.position.set(person.x*width,person.y*height,0);
           visitor={object};visitors.set(person.id,visitor);
         }
