@@ -5,7 +5,7 @@ const $ = (id) => document.getElementById(id);
 const reduced = matchMedia('(prefers-reduced-motion: reduce)');
 const projects = [...document.querySelectorAll('#project-list li')].map((li) => {
   const link = li.firstElementChild;
-  return { name: link.querySelector('strong').textContent, subtitle: link.querySelector('small').textContent, url: link.getAttribute('href'), color: link.dataset.color, kind: link.dataset.kind };
+  return { name: link.querySelector('strong').textContent, subtitle: link.querySelector('small').textContent, url: link.getAttribute('href'), color: link.dataset.color, logo: link.dataset.logo };
 });
 let audio;
 let garden;

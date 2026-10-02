@@ -2,8 +2,12 @@ import * as THREE from '../vendor/three.module.js';
 import { walk, layout, gaze } from './physics.js';
 
 export async function createGarden(canvas, projects, callbacks) {
+  const logos = await Promise.all(projects.map(async project => {
+    const image = new Image(); image.src = project.logo;
+    await image.decode(); return image;
+  }));
   const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: false, powerPreference: 'low-power' });
-  renderer.setPixelRatio(Math.min(devicePixelRatio, 1.75));
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
   const scene = new THREE.Scene();
   const camera = new THREE.OrthographicCamera(0, 1000, 0, 530, .1, 1000);
   camera.position.z = 500;
@@ -49,50 +53,21 @@ export async function createGarden(canvas, projects, callbacks) {
     return object;
   }
   function remove(object) { if (object) { scene.remove(object); object.geometry.dispose(); } }
-  function sample(draw, scale = 1, spacing = 1) {
+  function sample(draw, scale = 1, spacing = .5) {
     const buffer = document.createElement('canvas');
-    buffer.width = 320; buffer.height = 200;
+    const resolution = 2, rasterWidth = 320 * resolution;
+    buffer.width = rasterWidth; buffer.height = 200 * resolution;
     const ctx = buffer.getContext('2d', { willReadFrequently: true });
+    ctx.scale(resolution, resolution);
     draw(ctx);
-    const pixels = ctx.getImageData(0, 0, 320, 200).data;
+    const pixels = ctx.getImageData(0, 0, buffer.width, buffer.height).data;
     const result = [];
-    for (let y = 0; y < 200; y += spacing) for (let x = 0; x < 320; x += spacing) {
-      const i = (Math.floor(y) * 320 + Math.floor(x)) * 4;
-      if (pixels[i + 3] < 100) continue;
-      result.push({ x: (x - 160) * scale, y: (y - 110) * scale, color: `rgb(${pixels[i]},${pixels[i+1]},${pixels[i+2]})`, size: spacing * scale });
+    for (let y = 0; y < buffer.height; y += spacing * resolution) for (let x = 0; x < rasterWidth; x += spacing * resolution) {
+      const i = (y * rasterWidth + x) * 4;
+      if (pixels[i + 3] < 128) continue;
+      result.push({ x: (x / resolution - 160) * scale, y: (y / resolution - 110) * scale, color: `rgb(${pixels[i]},${pixels[i+1]},${pixels[i+2]})`, size: spacing * scale });
     }
     return result;
-  }
-  function emblem(ctx, project) {
-    const ink=project.color, pale='#e7ece2';
-    const pixel=(x,y,color=ink,size=2)=>{ctx.fillStyle=color;ctx.fillRect(160+x*size,48+y*size,size,size);};
-    if(['planet','sun','moon'].includes(project.kind)) {
-      for(let y=-10;y<=10;y++)for(let x=-10;x<=10;x++) {
-        if(x*x+y*y>100)continue;
-        if(project.kind==='moon'&&(x-5)**2+(y+3)**2<65)continue;
-        pixel(x,y, x<-3||y<-5?pale:ink);
-      }
-      if(project.kind==='planet')for(let i=0;i<80;i++) {
-        const angle=i/80*Math.PI*2,x=Math.cos(angle)*18,y=Math.sin(angle)*5;
-        pixel(Math.round(x),Math.round(y+x*.22),'#b0ba9d');
-      }
-      if(project.kind==='sun')for(let i=0;i<8;i++){
-        const a=i/8*Math.PI*2;pixel(Math.round(Math.cos(a)*15),Math.round(Math.sin(a)*15),ink,2);
-      }
-      return;
-    }
-    if(project.kind==='star'){
-      for(let y=-14;y<=14;y++)for(let x=-14;x<=14;x++)if(Math.abs(x)*Math.abs(y)<10&&Math.abs(x)+Math.abs(y)<15)pixel(x,y,Math.abs(x)<2?pale:ink);
-      pixel(-10,-9,'#b9c6aa');pixel(12,10,'#b9c6aa');return;
-    }
-    const shapes={
-      ship:['       p       ','      ppp      ','     pwwwp     ','     pwgwp     ','    ppwwwpp    ','   pppwwwppp   ','  ppppwwwpppp  ','     peep      ','      ee       ','       e       '],
-      satellite:['pwp     pwp','pwp  p  pwp','pwp pwp pwp','ppppwg wppp','pwp pwp pwp','pwp  p  pwp','pwp     pwp'],
-      ufo:['     ggg     ','    gwwwg    ','   gwwwwwg   ',' ppppppppppp ','ppwppwppwppwp','  ppppppppp  ','    a a a    '],
-    };
-    const shape=shapes[project.kind]||shapes.ship;
-    const palette={p:ink,w:pale,g:'#88aaa7',e:'#d9bc81',a:'#d3dfcf'};
-    shape.forEach((row,y)=>[...row].forEach((c,x)=>{if(c!==' ')pixel(x-row.length/2,y-shape.length/2,palette[c],3);}));
   }
   const buttons = projects.map((project, index) => {
     const button = document.createElement('a');
@@ -156,17 +131,23 @@ export async function createGarden(canvas, projects, callbacks) {
       buttons[index].setAttribute('aria-label', `Walk to ${projects[index].name}`);
       buttons[index].style.left=`${pos.x}px`;buttons[index].style.top=`${pos.y}px`;
       const project=projects[index];
-      const home=sample((ctx)=>{
-        emblem(ctx,project);
+      const scale=small?.9:1;
+      const icon=sample(ctx=>ctx.drawImage(logos[index],128,8,64,64),scale,2).map(p=>({...p,logo:true}));
+      const glints=[[-43,-79],[44,-54],[30,-108]].map(([x,y],i)=>({x:x*scale,y:y*scale,color:project.color,size:i?2:3,opacity:.35,glint:i+1}));
+      const title=sample((ctx)=>{
         ctx.fillStyle=project.color;
-        ctx.font=`400 ${index===5?22:26}px "Geist Pixel"`;ctx.textAlign='center';ctx.fillText(project.name,160,110);
-        ctx.fillStyle='#7d8978';ctx.font='400 14px "Geist Pixel"';
+        ctx.font=`400 ${index===5?25:30}px "Geist Pixel"`;ctx.textAlign='center';ctx.fillText(project.name,160,110);
+      },scale).map(p=>({...p,title:true}));
+      const caption=sample((ctx)=>{
+        ctx.fillStyle='#596856';ctx.font='400 16px "Geist Pixel"';
+        ctx.textAlign='center';
         const words=project.subtitle.split(' '),lines=[];let line='';
         for(const word of words){const next=line?`${line} ${word}`:word;if(ctx.measureText(next).width>260&&line){lines.push(line);line=word;}else line=next;}
-        lines.push(line);lines.forEach((text,i)=>ctx.fillText(text,160,135+i*19));
-      },small?.86:1);
+        lines.push(line);lines.forEach((text,i)=>ctx.fillText(text,160,136+i*21));
+      },scale);
+      const home=[...icon,...glints,...title,...caption];
       const object=dots(home.map(p=>({...p,x:p.x+pos.x,y:p.y+pos.y,z:12})),true);
-      clouds.push({object,home,velocity:new Float32Array(home.length*2)});
+      clouds.push({object,home,scale,hover:0,velocity:new Float32Array(home.length*2)});
     });
     if(!hero){
       const shape = [
@@ -298,8 +279,18 @@ export async function createGarden(canvas, projects, callbacks) {
     let found=-1;
     positions.forEach((pos,index)=>{
       const cloud=clouds[index],attr=cloud.object.geometry.attributes.position,array=attr.array;
+      const tilt=reduced?0:Math.sin(elapsed*.7+index*1.4)*.055;
+      const cos=Math.cos(tilt),sin=Math.sin(tilt),center=70*cloud.scale;
+      const hovering=pointer&&Math.abs(pointer.x-pos.x)<145&&Math.abs(pointer.y-pos.y+20)<90;
+      cloud.hover+=((hovering?1:0)-cloud.hover)*Math.min(1,dt*5);
       for(let i=0;i<cloud.home.length;i++){
-        const home=cloud.home[i],hx=home.x+pos.x,hy=home.y+pos.y+(reduced?0:Math.sin(elapsed*.85+index*1.7)*4);
+        const home=cloud.home[i];
+        const cx=home.x,cy=home.y+center;
+        const hx=pos.x+(home.logo?cx*cos-cy*sin:home.x);
+        const float=reduced?0:Math.sin(elapsed*.85+index*1.7)*4;
+        const ripple=reduced||!home.title?0:Math.sin(home.x*.055-elapsed*3)*cloud.hover*2;
+        const glint=reduced||!home.glint?0:Math.sin(elapsed*1.3+home.glint+index)*4;
+        const hy=pos.y+(home.logo?cx*sin+cy*cos-center:home.y)+float+ripple+glint;
         if(Math.abs(body.x-hx)<16 && Math.abs(body.y-hy)<16)found=index;
         if(reduced){array[i*3]=hx;array[i*3+1]=hy;continue;}
         let vx=cloud.velocity[i*2],vy=cloud.velocity[i*2+1];
