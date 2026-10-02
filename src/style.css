@@ -57,6 +57,8 @@ li small { display: block; font-size: 14px; color: #737d6d; margin-top: 6px; }
 .notes-section { max-width: 565px; margin: 54px 0 0; }
 .notes-section h2 { font-size: 14px; font-weight: 400; color: #667760; margin: 0 0 21px; }
 .notes-section a { display: flex; justify-content: space-between; gap: 18px; padding: 10px 0; font-size: 16px; line-height: 1.65; }
+.link-label { display: inline-flex; align-items: center; gap: 10px; }
+.link-label img { width: 18px; height: 18px; object-fit: contain; flex-shrink: 0; }
 .notes-section small { flex-shrink: 0; color: #667760; font-size: 13px; }
 .notes-section p { font-size: 14px; line-height: 1.7; color: #667760; margin: 16px 0 70px; }
 @media (max-width: 700px) {
