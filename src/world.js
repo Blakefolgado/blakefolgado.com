@@ -14,7 +14,7 @@ export async function createGarden(canvas, projects, callbacks) {
   let width = 1000, height = 530, positions = [], clouds = [];
   let hero, trail, ring, sea, scenery, bottles = [], active = false, frame = 0, last = 0, elapsed = 0;
   const seed = Math.random() * 1000;
-  let pointer;
+  let pointer, pointerClient;
   let destination = null;
   const visitors = new Map();
   let bottleNearby = -1;
@@ -218,6 +218,7 @@ export async function createGarden(canvas, projects, callbacks) {
     renderOnce();
   }
   function update(dt) {
+    if(pointerClient)pointer=coords(pointerClient);
     elapsed+=dt;
     if(keys.size){
       let dx=Number(keys.has('ArrowRight')||keys.has('d'))-Number(keys.has('ArrowLeft')||keys.has('a'));
@@ -296,6 +297,16 @@ export async function createGarden(canvas, projects, callbacks) {
         let vx=cloud.velocity[i*2],vy=cloud.velocity[i*2+1];
         const dx=array[i*3]-body.x,dy=array[i*3+1]-body.y,dist=Math.hypot(dx,dy);
         if(dist<27&&speed>20){vx+=dx/(dist||1)*speed*dt*8;vy+=dy/(dist||1)*speed*dt*8;}
+        if(pointer){
+          const px=array[i*3]-pointer.x,py=array[i*3+1]-pointer.y,distance=Math.hypot(px,py);
+          const reach=28+(i%9)*3;
+          if(distance<reach){
+            const force=(1-distance/reach)*(1400+(i%7)*160)*dt;
+            const angle=i*2.399963;
+            vx+=((distance?px/distance:0)+Math.cos(angle)*.35)*force;
+            vy+=((distance?py/distance:0)+Math.sin(angle)*.35)*force;
+          }
+        }
         vx+=((hx-array[i*3])*28-vx*6)*dt;
         vy+=((hy-array[i*3+1])*28-vy*6)*dt;
         array[i*3]+=vx*dt;array[i*3+1]+=vy*dt;
@@ -326,8 +337,8 @@ export async function createGarden(canvas, projects, callbacks) {
     if(value){if(width!==canvas.clientWidth||height!==canvas.clientHeight)build();last=performance.now();if(reduced)renderOnce();else frame=requestAnimationFrame(animate);}
   }
   function coords(event){const rect=canvas.getBoundingClientRect();return{x:event.clientX-rect.left,y:event.clientY-rect.top};}
-  document.addEventListener('pointermove',event=>{if(event.pointerType==='mouse'){pointer=coords(event);if(reduced)renderOnce();}});
-  document.addEventListener('pointerleave',()=>{pointer=undefined;});
+  document.addEventListener('pointermove',event=>{if(event.pointerType==='mouse'){pointerClient={clientX:event.clientX,clientY:event.clientY};if(reduced)renderOnce();}});
+  document.addEventListener('pointerleave',()=>{pointer=pointerClient=undefined;});
   canvas.addEventListener('pointerdown',(event)=>{if(event.button!==0)return;dragging=true;const p=coords(event);go(p.x,p.y);if(event.pointerType==='mouse')canvas.setPointerCapture(event.pointerId);});
   canvas.addEventListener('pointermove',(event)=>{if(!dragging)return;const p=coords(event);target.x=Math.max(20,Math.min(width-20,p.x));target.y=Math.max(35,Math.min(height-40,p.y));if(reduced)go(p.x,p.y);});
   const release=()=>{dragging=false;};
