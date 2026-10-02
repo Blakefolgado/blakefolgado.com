@@ -1,5 +1,6 @@
 import * as THREE from '../vendor/three.module.js';
 import { walk, layout, gaze } from './physics.js';
+import { makeScenery } from './scenery.js';
 
 export async function createGarden(canvas, projects, callbacks) {
   const logos = await Promise.all(projects.map(async project => {
@@ -12,7 +13,7 @@ export async function createGarden(canvas, projects, callbacks) {
   const camera = new THREE.OrthographicCamera(0, 1000, 0, 530, .1, 1000);
   camera.position.z = 500;
   let width = 1000, height = 530, positions = [], clouds = [];
-  let hero, trail, ring, sea, scenery, bottles = [], active = false, frame = 0, last = 0, elapsed = 0;
+  let hero, trail, ring, sea, scenery, sky, bottles = [], active = false, frame = 0, last = 0, elapsed = 0;
   const seed = Math.random() * 1000;
   let pointer, pointerClient;
   let destination = null;
@@ -180,34 +181,16 @@ export async function createGarden(canvas, projects, callbacks) {
       ring=dots(circle);ring.userData.life=0;
     }
     remove(sea); bottles.forEach(remove);
-    remove(scenery);
-    const landscape=[];
-    const random=i=>{const v=Math.sin(seed+i*12.9898)*43758.5453;return v-Math.floor(v);};
-    for(let i=0;i<100;i++) {
-      const x=15+random(i)*(width-30),y=30+random(i+150)*(height-320);
-      if(positions.some(p=>Math.abs(x-p.x)<155&&Math.abs(y-p.y)<90))continue;
-      landscape.push({x,y,z:0,color:'#c8d4bd',size:i%9===0?3:1.8,opacity:.5});
-      if(i%9===0)for(const [dx,dy]of [[-3,0],[3,0],[0,-3],[0,3]])landscape.push({x:x+dx,y:y+dy,z:0,color:'#d5ddcd',size:1.5,opacity:.6});
-    }
-    for(let x=0;x<width;x+=4) {
-      const mountain=Math.max(0,140-Math.abs(x-width*.15)*.75,95-Math.abs(x-width*.84)*.65);
-      const ridge=height-155-mountain;
-      const hill=height-140-23*Math.sin(x/width*6+seed);
-      for(let y=Math.round(ridge/4)*4;y<height-96;y+=4) {
-        const behind=y<hill;
-        landscape.push({x,y,z:0,color:behind?'#cbd9d1':'#c5d3b7',size:2.5,opacity:behind?.23:.26});
-      }
-    }
-    scenery=dots(landscape);
-    const water=[];
-    for(let x=0;x<width;x+=4) for(let y=0;y<100;y+=4) {
-      water.push({x,y:height-100+y,z:1,color:y<8?'#9ebeb7':'#b9d5cf',size:3,opacity:0});
-    }
+    remove(scenery); remove(sky);
+    const {land,sky:skyPixels,water}=makeScenery(width,height,positions,seed);
+    scenery=dots(land);
+    sky=dots(skyPixels,true);
+    sky.userData={home:skyPixels,velocity:new Float32Array(skyPixels.length*2)};
     sea=dots(water,true);sea.userData.home=water;
     const bottleShape=['  cc  ','  gg  ',' gggg ','gpwwpg','gpwwpg','gpwwpg',' gggg '];
     bottles=[0,1].map(index=>{
       const pixels=[];
-      const palette={c:'#b89a72',g:index?'#9eb8c7':'#8fbdb0',p:'#d8e7dc',w:'#faf2d9'};
+      const palette={c:'#a47a4e',g:index?'#496aab':'#387f72',p:'#b8e9d7',w:'#fff3cb'};
       bottleShape.forEach((row,y)=>[...row].forEach((c,x)=>{if(c!==' ')pixels.push({x:(x-2.5)*2.6,y:(y-3)*2.6,z:32,color:palette[c],size:2.7});}));
       bottleButtons[index].style.left=`${width*(index?.66:.34)}px`;
       bottleButtons[index].style.top=`${height-65}px`;
@@ -244,13 +227,37 @@ export async function createGarden(canvas, projects, callbacks) {
     hero.scale.set(1+Math.min(speed/2500,.13),1-Math.min(speed/3500,.1),1);
     const waterPositions=sea.geometry.attributes.position, waterOpacity=sea.geometry.attributes.opacity;
     const time=reduced?0:elapsed;
+    const skyPosition=sky.geometry.attributes.position,skyOpacity=sky.geometry.attributes.opacity;
+    sky.userData.home.forEach((p,i)=>{
+      const hx=p.x+(reduced||p.star?0:Math.sin(time*.45+p.phase)*5);
+      const hy=p.y+(reduced||p.star?0:Math.sin(time*.7+p.phase)*4);
+      let vx=sky.userData.velocity[i*2],vy=sky.userData.velocity[i*2+1];
+      let x=skyPosition.array[i*3],y=skyPosition.array[i*3+1];
+      if(!reduced){
+        if(pointer){
+          const dx=x-pointer.x,dy=y-pointer.y,distance=Math.hypot(dx,dy);
+          if(distance<40){
+            const force=(1-distance/40)*1700*dt,angle=i*2.399963;
+            vx+=((distance?dx/distance:0)+Math.cos(angle)*.35)*force;
+            vy+=((distance?dy/distance:0)+Math.sin(angle)*.35)*force;
+          }
+        }
+        vx+=(hx-x)*28*dt;vy+=(hy-y)*28*dt;
+        vx*=Math.exp(-6*dt);vy*=Math.exp(-6*dt);
+        x+=vx*dt;y+=vy*dt;
+      }else{x=hx;y=hy;}
+      sky.userData.velocity[i*2]=vx;sky.userData.velocity[i*2+1]=vy;
+      skyPosition.array[i*3]=x;skyPosition.array[i*3+1]=y;
+      skyOpacity.array[i]=p.opacity*(p.star&&!reduced?.8+Math.sin(time*1.2+p.phase)*.2:1);
+    });
+    skyPosition.needsUpdate=skyOpacity.needsUpdate=true;
     sea.userData.home.forEach((p,i)=>{
-      const edge=height-94+Math.sin(p.x*.017+time*.8)*5+Math.sin(p.x*.037-time*.55)*3;
+      const edge=height-124+Math.sin(p.x*.017+time*.8)*5+Math.sin(p.x*.037-time*.55)*3;
       const depth=p.y-edge;
       const ripple=Math.sin(p.x*.018+depth*.2-time*1.6);
       const wake=Math.max(0,1-Math.hypot(p.x-body.x,(p.y-body.y)*1.5)/65)*Math.min(speed/130,1);
       waterPositions.array[i*3+1]=p.y+(reduced?0:Math.sin(p.x*.025+time)*1.3)+wake*Math.sin(depth*.2-time*6)*4;
-      waterOpacity.array[i]=depth<0?0:depth<5?.6:(.12+Math.max(0,ripple)*.22+Math.max(0,wake)*.18)*Math.min(1,(height-p.y)/16);
+      waterOpacity.array[i]=depth<0?0:depth<5?.9:(.5+Math.max(0,ripple)*.3+Math.max(0,wake)*.18)*Math.min(1,(height-p.y)/22);
     });
     waterPositions.needsUpdate=waterOpacity.needsUpdate=true;
     let nearBottle=-1;
