@@ -1,6 +1,6 @@
 # Blake’s pixel world
 
-A Three.js personal website with a different winding sky on each visit. The priority order stays Tradehand, ToolRouter, Outside, SentryDock, HumanLeap, bot.store, then MagicScreenshots. Each project has its actual app logo rendered as coarse pixel particles, with finer half-pixel lettering sampled at twice the resolution. Logos tilt gently, titles ripple under the cursor, and the particles scatter on contact and spring back together. The robot walks with momentum and its eyes follow the mouse. The sky ends in mountains, hills and an interactive shoreline; writing, talks and previous work sit below.
+A Three.js personal website with a different winding sky on each visit. The priority order stays Tradehand, ToolRouter, Outside, HumanLeap, SentryDock, bot.store, then MagicScreenshots. Each project has its actual app logo rendered as coarse pixel particles, with finer half-pixel lettering sampled at twice the resolution. Logos tilt gently, titles ripple under the cursor, and the particles scatter on contact and spring back together. The robot walks with momentum and its eyes follow the mouse. The sky ends in mountains, hills and an interactive shoreline; writing, talks and previous work sit below.
 
 ## Develop
 
