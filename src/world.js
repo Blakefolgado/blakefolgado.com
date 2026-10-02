@@ -255,6 +255,14 @@ export async function createGarden(canvas, projects, callbacks) {
     object.scale.set(1+Math.min(speed/2500,.13)*(1-dodge.lean),1-Math.min(speed/3500,.1)*(1-dodge.lean),1);
     return dodge.lean;
   }
+  function steer() {
+    const dx=Number(keys.has('ArrowRight')||keys.has('d'))-Number(keys.has('ArrowLeft')||keys.has('a'));
+    const dy=Number(keys.has('ArrowDown')||keys.has('s'))-Number(keys.has('ArrowUp')||keys.has('w'));
+    const length=Math.hypot(dx,dy)||1;
+    target.x=Math.max(20,Math.min(width-20,body.x+dx/length*70));
+    target.y=Math.max(35,Math.min(height-40,body.y+dy/length*70));
+    return {dx,dy};
+  }
   function update(dt) {
     const rect=canvas.getBoundingClientRect();
     const bounds=visibleBounds(rect,{width:window.innerWidth,height:window.innerHeight});
@@ -275,11 +283,7 @@ export async function createGarden(canvas, projects, callbacks) {
       }
     }
     if(keys.size){
-      let dx=Number(keys.has('ArrowRight')||keys.has('d'))-Number(keys.has('ArrowLeft')||keys.has('a'));
-      let dy=Number(keys.has('ArrowDown')||keys.has('s'))-Number(keys.has('ArrowUp')||keys.has('w'));
-      const length=Math.hypot(dx,dy)||1;
-      target.x=Math.max(20,Math.min(width-20,body.x+dx/length*70));
-      target.y=Math.max(35,Math.min(height-40,body.y+dy/length*70));
+      const {dx,dy}=steer();
       if(reduced){body.x+=dx*3;body.y+=dy*3;}
     }
     if(!reduced&&bounds)walk(body,target,dt,width,height,wandering?100:390);
@@ -454,12 +458,21 @@ export async function createGarden(canvas, projects, callbacks) {
   const cancel=()=>{seaTap=undefined;dragging=false;};
   canvas.addEventListener('pointercancel',cancel);canvas.addEventListener('lostpointercapture',cancel);
   document.addEventListener('pointerup',cancel);
-  canvas.addEventListener('keydown',(event)=>{
-    if(!['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','w','a','s','d'].includes(event.key))return;
-    event.preventDefault();controlledAt=elapsed;wandering=false;keys.add(event.key);moved=true;destination=null;if(!event.repeat)callbacks.step();if(reduced)renderOnce();
+  const movementKey=event=>event.key.length===1?event.key.toLowerCase():event.key;
+  const editing=element=>element instanceof Element&&element.closest('input,textarea,select,[contenteditable]:not([contenteditable="false"])');
+  document.addEventListener('keydown',(event)=>{
+    const key=movementKey(event);
+    if(!active||dialog.open||editing(event.target)||event.isComposing||event.metaKey||event.ctrlKey||event.altKey)return;
+    if(!['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','w','a','s','d'].includes(key))return;
+    event.preventDefault();controlledAt=elapsed;wandering=false;keys.add(key);moved=true;destination=null;steer();
+    if(!event.repeat)callbacks.step();if(reduced)renderOnce();
   });
-  canvas.addEventListener('keyup',(event)=>{keys.delete(event.key);if(!keys.size){target.x=body.x+body.vx*.12;target.y=body.y+body.vy*.12;}});
-  canvas.addEventListener('blur',()=>keys.clear());
+  document.addEventListener('keyup',(event)=>{
+    if(!keys.delete(movementKey(event)))return;
+    if(!keys.size&&Math.hypot(body.vx,body.vy)>20){target.x=body.x+body.vx*.12;target.y=body.y+body.vy*.12;}
+  });
+  document.addEventListener('focusin',event=>{if(dialog.open||editing(event.target))stopWalking();});
+  window.addEventListener('blur',stopWalking);
   new ResizeObserver(()=>{if(canvas.clientWidth&&canvas.clientHeight)build();}).observe(canvas);
   build();
   return {

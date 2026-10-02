@@ -21,6 +21,8 @@ Tapping the sea opens the bottle composer immediately and cancels the current wa
 
 Scrolling confines Neo to the visible part of the world with room for the whole sprite. Scroll movement cancels the old journey so an edge correction cannot activate a project. After five seconds without movement controls, Neo takes slower short walks around nearby landmarks, pausing between them. Clicking, dragging or using the movement keys takes over immediately. Hovering Neo pauses the stroll for the dodge, and the bottle dialog pauses idle movement. Autonomous movement never opens websites or bottles, and never plays movement sounds. Reduced motion disables idle strolling. This behaviour runs in the browser with no model calls or added services.
 
+Arrow keys and WASD work anywhere on the page without focusing the canvas. Both short taps and held keys move the character, including shifted uppercase WASD. Inputs, bottle dialogs, text composition and browser shortcuts keep normal keyboard behaviour. Losing window focus clears movement so held keys cannot get stuck.
+
 The two talk links and previous roles come from the repository’s existing content. The former `content/site-content.json` remains historical source material and is not used at runtime. The photo favicon is preserved.
 
 ## Bottles, visitors and free AI
