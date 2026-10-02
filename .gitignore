@@ -4,3 +4,5 @@ generated/
 node_modules/
 .vercel
 .env*.local
+.local/
+.env*
