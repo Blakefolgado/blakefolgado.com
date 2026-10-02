@@ -19,6 +19,8 @@ Open http://localhost:4173. Rebuild after editing. The server serves `dist` plus
 
 Tapping the sea opens the bottle composer immediately and cancels the current walk, so it cannot open a project crossed on the way to the water. Touch scrolling cancels the tap. Bottle buttons also open their dialogs directly. Mouse movement sends ripples through the water, fish dart away, and boats drift and bob. Hovering or tapping the surfer knocks the rider off the board with a splash; the rider recovers after a few seconds and a parked cursor cannot repeatedly topple them. Reduced motion keeps the ocean creatures still.
 
+Scrolling confines Neo to the visible part of the world with room for the whole sprite. Scroll movement cancels the old journey so an edge correction cannot activate a project. After five seconds without movement controls, Neo takes slower short walks around nearby landmarks, pausing between them. Clicking, dragging or using the movement keys takes over immediately. Hovering Neo pauses the stroll for the dodge, and the bottle dialog pauses idle movement. Autonomous movement never opens websites or bottles, and never plays movement sounds. Reduced motion disables idle strolling. This behaviour runs in the browser with no model calls or added services.
+
 The two talk links and previous roles come from the repository’s existing content. The former `content/site-content.json` remains historical source material and is not used at runtime. The photo favicon is preserved.
 
 ## Bottles, visitors and free AI

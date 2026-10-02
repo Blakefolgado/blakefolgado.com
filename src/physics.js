@@ -1,10 +1,9 @@
 // Semi-implicit spring integration; the caller caps the frame step after a pause.
-export function walk(body, target, dt, width, height) {
+export function walk(body, target, dt, width, height, limit = 390) {
   const step = Math.min(dt, 1 / 30);
   body.vx += ((target.x - body.x) * 32 - body.vx * 7.8) * step;
   body.vy += ((target.y - body.y) * 32 - body.vy * 7.8) * step;
   const speed = Math.hypot(body.vx, body.vy);
-  const limit = 390;
   if (speed > limit) { body.vx *= limit / speed; body.vy *= limit / speed; }
   body.x = Math.max(20, Math.min(width - 20, body.x + body.vx * step));
   body.y = Math.max(35, Math.min(height - 40, body.y + body.vy * step));
@@ -28,4 +27,30 @@ export function gaze(x, y, pointer) {
 // Keep sea hit testing on the same moving shoreline that we draw.
 export function seaSurface(x, height, time = 0) {
   return height - 124 + Math.sin(x * .017 + time * .8) * 5 + Math.sin(x * .037 - time * .55) * 3;
+}
+
+export function visibleBounds(rect, viewport) {
+  const left = Math.max(0, -rect.left), right = Math.min(rect.width, viewport.width - rect.left);
+  const top = Math.max(0, -rect.top), bottom = Math.min(rect.height, viewport.height - rect.top);
+  if (right <= left || bottom <= top) return null;
+  const px = Math.min(44, (right - left) / 2), py = Math.min(44, (bottom - top) / 2);
+  return { left: left + px, right: right - px, top: top + py, bottom: bottom - py };
+}
+
+export function keepInView(body, target, bounds) {
+  const clampX = x => Math.max(bounds.left, Math.min(bounds.right, x));
+  const clampY = y => Math.max(bounds.top, Math.min(bounds.bottom, y));
+  const x = clampX(body.x), y = clampY(body.y);
+  if (x !== body.x) body.vx = 0;
+  if (y !== body.y) body.vy = 0;
+  body.x = x; body.y = y;
+  target.x = clampX(target.x); target.y = clampY(target.y);
+}
+
+export function wanderTarget(body, bounds, landmarks, random = Math.random) {
+  const visible = landmarks.filter(p => p.y > bounds.top + 80 && p.y < bounds.bottom - 70);
+  const visit = visible.length && random() < .55 ? visible[Math.floor(random() * visible.length)] : null;
+  const x = visit ? visit.x + (random() < .5 ? -120 : 120) : body.x + (random() - .5) * 300;
+  const y = visit ? visit.y - 65 : body.y + (random() - .5) * 250;
+  return { x: Math.max(bounds.left, Math.min(bounds.right, x)), y: Math.max(bounds.top, Math.min(bounds.bottom, y)) };
 }

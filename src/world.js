@@ -1,5 +1,5 @@
 import * as THREE from '../vendor/three.module.js';
-import { walk, layout, gaze, seaSurface } from './physics.js';
+import { walk, layout, gaze, seaSurface, visibleBounds, keepInView, wanderTarget } from './physics.js';
 import { makeScenery } from './scenery.js';
 import { marineSprites, stepMarine, knockSurfer } from './ocean.js';
 
@@ -19,6 +19,8 @@ export async function createGarden(canvas, projects, callbacks) {
   let pointer, pointerClient;
   let destination = null;
   let seaTap, marine = [], ripples = [], lastRipple = 0, previousPointer;
+  let controlledAt = 0, wanderAt = 5, wandering = false;
+  const dialog = document.getElementById('bottle-dialog');
   const visitors = new Map();
   let bottleNearby = -1;
   let reduced = callbacks.reduced, dragging = false, moved = false, nearby = -1;
@@ -112,6 +114,7 @@ export async function createGarden(canvas, projects, callbacks) {
     }
   }
   function go(x,y, chosen = null) {
+    controlledAt=elapsed;wandering=false;wanderAt=elapsed+5;
     moved = true;
     destination = chosen;
     target.x = Math.max(20, Math.min(width-20,x));
@@ -122,6 +125,7 @@ export async function createGarden(canvas, projects, callbacks) {
     if(reduced) renderOnce();
   }
   function stopWalking() {
+    controlledAt=elapsed;wandering=false;wanderAt=elapsed+5;
     dragging=false;keys.clear();moved=false;destination={bottle:1};
     target.x=body.x;target.y=body.y;body.vx=body.vy=0;
   }
@@ -217,6 +221,7 @@ export async function createGarden(canvas, projects, callbacks) {
     });
     body.x=width*.3;body.y=85;body.vx=body.vy=0;
     target.x=body.x;target.y=body.y;nearby=-1;bottleNearby=-1;
+    stopWalking();
     renderOnce();
   }
   function poseCharacter(object,x,y,speed,vx,dt) {
@@ -251,8 +256,24 @@ export async function createGarden(canvas, projects, callbacks) {
     return dodge.lean;
   }
   function update(dt) {
-    if(pointerClient)pointer=coords(pointerClient);
+    const rect=canvas.getBoundingClientRect();
+    const bounds=visibleBounds(rect,{width:window.innerWidth,height:window.innerHeight});
+    if(pointerClient)pointer={x:pointerClient.clientX-rect.left,y:pointerClient.clientY-rect.top};
     elapsed+=dt;
+    if(bounds)keepInView(body,target,bounds);
+    const hovered=pointer&&Math.abs(pointer.x-body.x)<45&&Math.abs(pointer.y-body.y)<43;
+    if(dragging||keys.size||dialog.open||hovered){
+      controlledAt=elapsed;
+      if(wandering){target.x=body.x;target.y=body.y;wandering=false;}
+    }
+    if(!reduced&&bounds&&!dialog.open&&elapsed-controlledAt>5){
+      const settled=Math.hypot(body.x-target.x,body.y-target.y)<12&&Math.hypot(body.vx,body.vy)<18;
+      if(wandering&&settled){wandering=false;wanderAt=elapsed+1.2+Math.random()*2;}
+      if(!wandering&&(!moved||settled)&&elapsed>=wanderAt){
+        const next=wanderTarget(body,bounds,positions);
+        target.x=next.x;target.y=next.y;wandering=true;moved=false;destination=null;
+      }
+    }
     if(keys.size){
       let dx=Number(keys.has('ArrowRight')||keys.has('d'))-Number(keys.has('ArrowLeft')||keys.has('a'));
       let dy=Number(keys.has('ArrowDown')||keys.has('s'))-Number(keys.has('ArrowUp')||keys.has('w'));
@@ -261,7 +282,8 @@ export async function createGarden(canvas, projects, callbacks) {
       target.y=Math.max(35,Math.min(height-40,body.y+dy/length*70));
       if(reduced){body.x+=dx*3;body.y+=dy*3;}
     }
-    if(!reduced)walk(body,target,dt,width,height);
+    if(!reduced&&bounds)walk(body,target,dt,width,height,wandering?100:390);
+    if(bounds)keepInView(body,target,bounds);
     const speed=Math.hypot(body.vx,body.vy);
     const lean=poseCharacter(hero,body.x,body.y,speed,body.vx,dt);
     const bob=reduced?0:Math.sin(elapsed*(speed>15?18:2.5))*(speed>15?1.8:1.4)*(1-lean);
@@ -406,6 +428,10 @@ export async function createGarden(canvas, projects, callbacks) {
   function coords(event){const rect=canvas.getBoundingClientRect();return{x:event.clientX-rect.left,y:event.clientY-rect.top};}
   document.addEventListener('pointermove',event=>{if(event.pointerType==='mouse'){pointerClient={clientX:event.clientX,clientY:event.clientY};if(reduced)renderOnce();}});
   document.addEventListener('pointerleave',()=>{pointer=pointerClient=undefined;});
+  window.addEventListener('scroll',()=>{
+    stopWalking();
+    if(reduced)renderOnce();
+  },{passive:true});
   canvas.addEventListener('pointerdown',(event)=>{
     if(event.button!==0)return;
     seaTap=undefined;
@@ -430,7 +456,7 @@ export async function createGarden(canvas, projects, callbacks) {
   document.addEventListener('pointerup',cancel);
   canvas.addEventListener('keydown',(event)=>{
     if(!['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','w','a','s','d'].includes(event.key))return;
-    event.preventDefault();keys.add(event.key);moved=true;destination=null;if(!event.repeat)callbacks.step();if(reduced)renderOnce();
+    event.preventDefault();controlledAt=elapsed;wandering=false;keys.add(event.key);moved=true;destination=null;if(!event.repeat)callbacks.step();if(reduced)renderOnce();
   });
   canvas.addEventListener('keyup',(event)=>{keys.delete(event.key);if(!keys.size){target.x=body.x+body.vx*.12;target.y=body.y+body.vy*.12;}});
   canvas.addEventListener('blur',()=>keys.clear());

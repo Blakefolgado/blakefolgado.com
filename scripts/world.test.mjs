@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { walk, layout, gaze } from '../src/physics.js';
+import { walk, layout, gaze, visibleBounds, keepInView, wanderTarget } from '../src/physics.js';
 import { marineSprites, stepMarine } from '../src/ocean.js';
 
 test('walking has momentum, settles at its destination, and remains inside the garden', () => {
@@ -57,4 +57,31 @@ test('the surfer recovers after a knock instead of falling forever under a parke
   assert.equal(stepMarine(surfer,1/60,5.1,390,1530,{x:surfer.x,y:surfer.y-10},body,false).knocked,true);
   const still=stepMarine(surfer,1/60,5.2,390,1530,pointer,body,true);
   assert.equal(still.fall,0);assert.equal(still.rotation,0);
+});
+
+test('scrolling keeps the whole character in the visible world and cancels outward velocity', () => {
+  const body={x:120,y:85,vx:0,vy:-200},target={x:-100,y:-100};
+  for(const top of [300,-500,-1050,-500,300]){
+    const bounds=visibleBounds({left:16,top,width:358,height:1530},{width:390,height:640});
+    const previousY=body.y;
+    keepInView(body,target,bounds);
+    assert.ok(body.y+top>=44&&body.y+top<=596,'the sprite retains room for its head and boots');
+    assert.ok(body.x>=bounds.left&&body.x<=bounds.right);
+    assert.ok(target.y>=bounds.top&&target.y<=bounds.bottom,'old off-screen targets cannot pull him out again');
+    if(previousY!==body.y)assert.equal(body.vy,0,'hitting the viewport edge removes the old vertical pull');
+  }
+  assert.equal(visibleBounds({left:0,top:-1700,width:390,height:1530},{width:390,height:640}),null);
+});
+
+test('idle strolls stay in the current viewport and use a gentler walking speed', () => {
+  const bounds={left:44,right:314,top:950,bottom:1450};
+  const body={x:120,y:1000,vx:0,vy:0};
+  const target=wanderTarget(body,bounds,[{x:100,y:120},{x:220,y:1100}],()=>.75);
+  assert.ok(Math.hypot(target.x-body.x,target.y-body.y)>40,'idle movement picks a real stroll');
+  assert.ok(target.x>=bounds.left&&target.x<=bounds.right&&target.y>=bounds.top&&target.y<=bounds.bottom);
+  for(let i=0;i<180;i++){
+    walk(body,target,1/60,358,1530,100);keepInView(body,target,bounds);
+    assert.ok(Math.hypot(body.vx,body.vy)<=100.001,'autonomous movement stays calm');
+  }
+  assert.ok(Math.hypot(body.x-target.x,body.y-target.y)<1);
 });
