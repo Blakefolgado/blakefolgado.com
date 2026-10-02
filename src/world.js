@@ -81,14 +81,8 @@ export async function createGarden(canvas, projects, callbacks) {
     return result;
   }
   const buttons = projects.map((project, index) => {
-    const button = document.createElement('a');
-    button.className = 'portal';
-    button.href = project.url;
-    button.target = '_blank';
-    button.rel = 'noopener noreferrer';
+    const button = project.element;
     button.setAttribute('aria-label', `Walk to ${project.name}`);
-    const label = document.createElement('span'); label.className = 'sr-only';label.textContent = project.name;
-    button.append(label);
     button.addEventListener('click', (event) => {
       if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
       event.preventDefault();
@@ -97,7 +91,6 @@ export async function createGarden(canvas, projects, callbacks) {
       const point=clouds[index].home.reduce((best,p)=>score(p)<score(best)?p:best);
       go(positions[index].x+point.x, positions[index].y+point.y, { project: index });
     });
-    document.getElementById('portals').append(button);
     return button;
   });
   const bottleButtons = ['Open a bottle', 'Leave a note'].map((label, index) => {

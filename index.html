@@ -8,13 +8,18 @@
   <meta name="theme-color" content="#fafbf9">
   <meta property="og:title" content="Blake Folgado">
   <meta property="og:description" content="Designer who likes to make products. Come have a wander.">
-  <meta property="og:image" content="https://blakefolgado.com/og.png">
+  <meta property="og:image" content="https://www.blakefolgado.com/assets/blake.jpg">
+  <meta property="og:image:width" content="400">
+  <meta property="og:image:height" content="400">
+  <meta property="og:image:alt" content="Blake Folgado">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://blakefolgado.com/">
-  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:image" content="https://www.blakefolgado.com/assets/blake.jpg">
+  <meta name="twitter:image:alt" content="Blake Folgado">
   <link rel="canonical" href="https://blakefolgado.com/">
-  <link rel="icon" href="https://pbs.twimg.com/profile_images/1965432976679796737/a4clo-mr.jpg">
-  <link rel="apple-touch-icon" href="https://pbs.twimg.com/profile_images/1965432976679796737/a4clo-mr.jpg">
+  <link rel="icon" href="/assets/blake.jpg">
+  <link rel="apple-touch-icon" href="/assets/blake.jpg">
   <link rel="preload" href="/assets/fonts/GeistPixel-Square.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/src/style.css">
   <script type="module" src="/src/main.js"></script>
@@ -23,25 +28,21 @@
   <div class="page">
     <main>
       <section class="intro" aria-labelledby="name">
-        <h1 id="name" aria-label="Blake Folgado"><button class="name-reveal" type="button" aria-label="Show a photo of Blake Folgado">Blake Folgado<img class="portrait" src="https://pbs.twimg.com/profile_images/1965432976679796737/a4clo-mr.jpg" width="112" height="112" alt="" aria-hidden="true"></button></h1>
+        <h1 id="name" aria-label="Blake Folgado"><button class="name-reveal" type="button" aria-label="Show a photo of Blake Folgado">Blake Folgado<img class="portrait" src="/assets/blake.jpg" width="112" height="112" alt="" aria-hidden="true"></button></h1>
         <p>I’m a designer who likes to make products. Previously, Product Director at <a href="https://www.cuvva.com" target="_blank" rel="noopener noreferrer">Cuvva</a> and part of <a href="https://www.joinef.com" target="_blank" rel="noopener noreferrer">Entrepreneur First</a>’s third cohort. I used to design toys, too.</p>
         <nav class="socials" aria-label="Find me"><a href="https://github.com/Blakefolgado" target="_blank" rel="noopener noreferrer">GitHub</a><a href="https://x.com/blakefolgado" target="_blank" rel="noopener noreferrer">Twitter</a><a href="mailto:blake@blakefolgado.com">Email</a></nav>
       </section>
-      <section id="garden" aria-label="Explore my projects" hidden>
+      <section id="garden" aria-label="Explore my projects">
         <canvas id="world" aria-label="A pixel garden. Click or tap to walk, or use the arrow keys or WASD. Hold Space for bullet time. Press Shift or hover Neo to dodge. Touching a project opens its website in a new tab. Tap the sea to leave a bottle. Tab to a project and press Enter to walk to it." tabindex="0"></canvas>
-        <div id="portals" aria-label="Walk to a project"></div>
-      </section>
-      <section id="project-list" aria-label="Things I’m working on">
-        <h2>Things I’m working on</h2>
-        <ol>
-          <li><a href="https://tradehand.com" target="_blank" rel="noopener noreferrer" data-color="#386536" data-logo="/assets/logos/tradehand.png"><span><strong>Tradehand</strong><small>Book a trade. Run a trade business.</small></span></a></li>
-          <li><a href="https://toolrouter.com" target="_blank" rel="noopener noreferrer" data-color="#424665" data-logo="/assets/logos/toolrouter.svg"><span><strong>ToolRouter</strong><small>One connection. Every tool for your AI.</small></span></a></li>
-          <li><a href="https://outside.so" target="_blank" rel="noopener noreferrer" data-color="#057e9f" data-logo="/assets/logos/outside.webp"><span><strong>Outside</strong><small>More plans with your favourite people.</small></span></a></li>
-          <li><a href="https://humanleap.com" target="_blank" rel="noopener noreferrer" data-color="#9b675f" data-logo="/assets/logos/humanleap.svg"><span><strong>HumanLeap</strong><small>You keep the ideas. We do the small stuff.</small></span></a></li>
-          <li><a href="https://sentrydock.com" target="_blank" rel="noopener noreferrer" data-color="#50616c" data-logo="/assets/logos/sentrydock.png"><span><strong>SentryDock</strong><small>The news before the rest of the market.</small></span></a></li>
-          <li><a href="https://bot.store" target="_blank" rel="noopener noreferrer" data-color="#795c95" data-logo="/assets/logos/bot.png"><span><strong>bot.store</strong><small>An app store for Grok bots.</small></span></a></li>
-          <li><a href="https://magicscreenshots.com" target="_blank" rel="noopener noreferrer" data-color="#805f86" data-logo="/assets/logos/magic.svg"><span><strong>MagicScreenshots</strong><small>App Store screenshots, made beautiful.</small></span></a></li>
-        </ol>
+        <div id="portals" aria-label="Walk to a project">
+          <a class="portal" href="https://tradehand.com" target="_blank" rel="noopener noreferrer" data-color="#386536" data-logo="/assets/logos/tradehand.png"><span class="sr-only"><strong>Tradehand</strong><small>Book a trade. Run a trade business.</small></span></a>
+          <a class="portal" href="https://toolrouter.com" target="_blank" rel="noopener noreferrer" data-color="#424665" data-logo="/assets/logos/toolrouter.svg"><span class="sr-only"><strong>ToolRouter</strong><small>One connection. Every tool for your AI.</small></span></a>
+          <a class="portal" href="https://outside.so" target="_blank" rel="noopener noreferrer" data-color="#057e9f" data-logo="/assets/logos/outside.webp"><span class="sr-only"><strong>Outside</strong><small>More plans with your favourite people.</small></span></a>
+          <a class="portal" href="https://humanleap.com" target="_blank" rel="noopener noreferrer" data-color="#9b675f" data-logo="/assets/logos/humanleap.svg"><span class="sr-only"><strong>HumanLeap</strong><small>You keep the ideas. We do the small stuff.</small></span></a>
+          <a class="portal" href="https://sentrydock.com" target="_blank" rel="noopener noreferrer" data-color="#50616c" data-logo="/assets/logos/sentrydock.png"><span class="sr-only"><strong>SentryDock</strong><small>The news before the rest of the market.</small></span></a>
+          <a class="portal" href="https://bot.store" target="_blank" rel="noopener noreferrer" data-color="#795c95" data-logo="/assets/logos/bot.png"><span class="sr-only"><strong>bot.store</strong><small>An app store for Grok bots.</small></span></a>
+          <a class="portal" href="https://magicscreenshots.com" target="_blank" rel="noopener noreferrer" data-color="#805f86" data-logo="/assets/logos/magic.svg"><span class="sr-only"><strong>MagicScreenshots</strong><small>App Store screenshots, made beautiful.</small></span></a>
+        </div>
       </section>
       <dialog id="bottle-dialog" aria-labelledby="bottle-title">
         <form method="dialog" class="bottle-close"><button aria-label="Close bottle">×</button></form>
