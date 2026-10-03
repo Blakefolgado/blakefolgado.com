@@ -27,6 +27,9 @@ test('random worlds preserve priority and keep all seven project labels apart an
   }
   const html=await readFile('index.html','utf8');
   assert.deepEqual([...html.matchAll(/<strong>(.*?)<\/strong>/g)].map(m=>m[1]),['Tradehand','ToolRouter','Outside','HumanLeap','SentryDock','bot.store','MagicScreenshots']);
+  assert.equal([...html.matchAll(/class="portal"/g)].length,7,'project destinations exist before the world loads');
+  assert.match(html,/<section id="garden" aria-label="Explore my projects">/,'the initial page reserves the world on mobile too');
+  assert.doesNotMatch(html,/<ol\b|id="project-list"/,'slow loading cannot expose a second project list');
   assert.ok(!JSON.parse(await readFile('vercel.json','utf8')).crons);
   const packageJson=JSON.parse(await readFile('package.json','utf8'));
   assert.ok(!packageJson.scripts.build.includes('generate'));

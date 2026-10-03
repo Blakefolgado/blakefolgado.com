@@ -51,12 +51,6 @@ dialog button { border: 0; background: none; padding: 8px 0; font-size: 13px; }
 #bottle-status:empty { display: none; }
 button:disabled { opacity: .5; cursor: wait; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
-#project-list { padding: 44px 0 20px; max-width: 565px; }
-#project-list h2 { font-size: 14px; font-weight: 400; margin: 0 0 22px; color: #737d6d; }
-ol { list-style: none; padding: 0; margin: 0; }
-li a { display: block; padding: 12px 0; }
-li strong { font-size: 16px; font-weight: 400; }
-li small { display: block; font-size: 14px; color: #737d6d; margin-top: 6px; }
 .notes-section { max-width: 565px; margin: 54px 0 0; }
 .notes-section h2 { font-size: 14px; font-weight: 400; color: #667760; margin: 0 0 21px; }
 .notes-section a { display: flex; justify-content: space-between; gap: 18px; padding: 10px 0; font-size: 16px; line-height: 1.65; }

@@ -3,9 +3,8 @@ import { connectTide } from './tide.js';
 
 const $ = (id) => document.getElementById(id);
 const reduced = matchMedia('(prefers-reduced-motion: reduce)');
-const projects = [...document.querySelectorAll('#project-list li')].map((li) => {
-  const link = li.firstElementChild;
-  return { name: link.querySelector('strong').textContent, subtitle: link.querySelector('small').textContent, url: link.getAttribute('href'), color: link.dataset.color, logo: link.dataset.logo };
+const projects = [...document.querySelectorAll('#portals .portal')].map((link) => {
+  return { element: link, name: link.querySelector('strong').textContent, subtitle: link.querySelector('small').textContent, url: link.getAttribute('href'), color: link.dataset.color, logo: link.dataset.logo };
 });
 let audio;
 let garden;
@@ -32,15 +31,8 @@ function chime(index = 0, soft = false) {
   }
 }
 
-function showLinks() {
-  $('garden').hidden = true;
-  $('project-list').hidden = false;
-  garden?.setActive(false);
-}
-
 try {
   await document.fonts.load('24px "Geist Pixel"');
-  $('garden').hidden = false;
   garden = await createGarden($('world'), projects, {
     select(index) {
       chime(index);
@@ -50,21 +42,20 @@ try {
     bottle: index => tide?.open(index),
     reduced: reduced.matches,
   });
-  $('project-list').hidden = true;
   garden.setActive(true);
   tide = connectTide(garden, chime);
   reduced.addEventListener('change', (event) => garden.setReduced(event.matches));
   document.addEventListener('visibilitychange', () => {
-    garden.setActive(!document.hidden && !$('garden').hidden);
+    garden.setActive(!document.hidden);
     if (document.hidden) audio?.suspend();
   });
   $('world').addEventListener('webglcontextlost', (event) => {
     event.preventDefault();
-    showLinks();
+    garden.setActive(false);
   });
   window.addEventListener('pagehide', () => { garden.setActive(false); audio?.suspend(); });
-  window.addEventListener('pageshow', () => garden.setActive(!$('garden').hidden));
+  window.addEventListener('pageshow', () => garden.setActive(!document.hidden));
 } catch (error) {
   console.warn('The garden is unavailable. Project links remain available.', error);
-  showLinks();
+  garden?.setActive(false);
 }
